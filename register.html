@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب | منصة التسليم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap'); body { font-family: 'Cairo', sans-serif; } </style>
+</head>
+<body class="bg-slate-100 flex items-center justify-center p-4 min-h-screen">
+    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
+        <h2 class="text-2xl font-bold text-center mb-8 text-slate-800">إنشاء حساب مهندس جديد</h2>
+        
+        <form id="regForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الاسم الثلاثي على الأقل</label>
+                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الرقم الجامعي / Index</label>
+                <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الجامعة والتخصص</label>
+                <select id="regCollege" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                    <option value="السودان العالمية_كهرباء">السودان العالمية - هندسة كهرباء</option>
+                    <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
+                    <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
+                    <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
+                    <option value="الحياة_طبية">كلية الحياة - هندسة طبية</option>
+                    <option value="الحياة_كهرباء">كلية الحياة - هندسة كهرباء</option>
+                    <option value="الحياة_اتصالات">كلية الحياة - اتصالات</option>
+                </select>
+            </div>
+
+            <div class="grid grid-cols-2 gap-3">
+                <input type="password" id="regPass" placeholder="كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all shadow-lg">إنشاء الحساب وتوثيقه 📧</button>
+            <div id="regMessage" class="hidden text-center font-bold p-3 rounded-xl mt-4"></div>
+        </form>
+    </div>
+
+    <script type="module" src="register.js"></script>
+</body>
+</html>
