@@ -1,7 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
 // --- 1. إعدادات Firebase ---
 const firebaseConfig = {
@@ -17,14 +16,18 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
-const storage = getStorage(app);
+
+// --- 2. إعدادات Cloudinary الخاصة بك ---
+const CLOUD_NAME = "dilxydgpn";
+const UPLOAD_PRESET = "student_uploads";
+const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
 
 let currentUserData = null;
 let finalPdfBlob = null;
 const path = window.location.pathname;
 const page = path.split("/").pop() || "index.html";
 
-// --- 2. منطق صفحة التسجيل (register.html) ---
+// --- 3. منطق الصفحات (التسجيل ودخول) ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
     if (regForm) {
@@ -48,7 +51,6 @@ if (page === "register.html") {
     }
 }
 
-// --- 3. منطق صفحة تسجيل الدخول (login.html) ---
 if (page === "login.html") {
     const loginForm = document.getElementById('loginForm');
     if (loginForm) {
@@ -64,7 +66,7 @@ if (page === "login.html") {
     }
 }
 
-// --- 4. منطق الصفحة الرئيسية (index.html) ---
+// --- 4. منطق الصفحة الرئيسية (الرفع والمعالجة) ---
 if (page === "index.html" || page === "") {
     onAuthStateChanged(auth, async (user) => {
         const loader = document.getElementById('initialLoader');
@@ -88,7 +90,7 @@ if (page === "index.html" || page === "") {
         if (loader) loader.classList.add('hidden');
     });
 
-    // --- معالجة الصور وتحويلها لـ PDF ---
+    // تحويل الصور إلى PDF
     const convertBtn = document.getElementById('convertBtn');
     if (convertBtn) {
         convertBtn.onclick = async () => {
@@ -108,7 +110,6 @@ if (page === "index.html" || page === "") {
                     const imgProps = doc.getImageProperties(imgData);
                     const ratio = imgProps.width / imgProps.height;
                     const pdfImgHeight = pageWidth / ratio;
-                    
                     doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
                 }
 
@@ -117,63 +118,63 @@ if (page === "index.html" || page === "") {
                 document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
                 document.getElementById('previewArea').classList.remove('hidden');
                 toggleStatus(false);
-            } catch (err) { 
-                alert(err.message); 
-                toggleStatus(false); 
-            }
+            } catch (err) { alert(err.message); toggleStatus(false); }
         };
     }
 
-    // --- رفع الملف النهائي (المشكلة التي سألت عنها) ---
+    // الرفع إلى Cloudinary وتخزين البيانات في Firebase
     const finalSubmit = document.getElementById('finalSubmit');
     if (finalSubmit) {
         finalSubmit.onclick = async () => {
             if (!finalPdfBlob) return alert("يرجى معالجة الصور أولاً");
 
-            // إنشاء التاريخ بصيغة يوم-شهر
+            // إنشاء التاريخ المطلوب (9-1)
             const now = new Date();
             const dateStr = `${now.getDate()}-${now.getMonth() + 1}`;
-            
-            // تسمية الملف: اسم الطالب + التاريخ
-            const fileName = `${currentUserData.fullName} ${dateStr}.pdf`;
-            const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
-            
-            const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
-            
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                    toggleStatus(true, `جاري الرفع: ${progress}% 🚀`);
-                    if(document.getElementById('progressBar')) {
-                        document.getElementById('progressBar').style.width = progress + "%";
-                    }
-                }, 
-                (error) => { 
-                    alert("خطأ في الرفع: " + error.message); 
-                    toggleStatus(false); 
-                }, 
-                async () => {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    
-                    // حفظ السجل في قاعدة البيانات
+            const fileName = `${currentUserData.fullName} ${dateStr}`;
+
+            // تجهيز بيانات الرفع لـ Cloudinary
+            const formData = new FormData();
+            formData.append("file", finalPdfBlob);
+            formData.append("upload_preset", UPLOAD_PRESET);
+            formData.append("public_id", fileName); // هذا هو اسم الملف في السحابة
+
+            try {
+                toggleStatus(true, "جاري رفع التكليف للسحابة... 🚀");
+                
+                // عملية الرفع باستخدام Fetch
+                const response = await fetch(CLOUDINARY_URL, {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+
+                if (result.secure_url) {
+                    // حفظ المعلومات في Firebase Realtime Database
                     await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
                         studentName: currentUserData.fullName,
                         academicIndex: currentUserData.academicIndex,
-                        fileUrl: downloadURL,
-                        submittedAt: new Date().toLocaleString('ar-EG'),
-                        fileName: fileName
+                        fileUrl: result.secure_url,
+                        fileName: fileName,
+                        submittedAt: new Date().toLocaleString('ar-EG')
                     });
 
-                    toggleStatus(true, "✅ تم رفع التكليف بنجاح يا مهندس!");
+                    toggleStatus(true, "✅ تم الإرسال بنجاح! شكراً يا مهندس.");
                     setTimeout(() => toggleStatus(false), 3000);
+                } else {
+                    throw new Error(result.error.message);
                 }
-            );
+            } catch (error) {
+                console.error(error);
+                alert("فشل الرفع: " + error.message);
+                toggleStatus(false);
+            }
         };
     }
 }
 
 // --- 5. الدوال المساعدة ---
-
 function readFileAsDataURL(file) { 
     return new Promise(res => { 
         const reader = new FileReader(); 
@@ -185,14 +186,9 @@ function readFileAsDataURL(file) {
 function toggleStatus(show, text = "") {
     const overlay = document.getElementById('statusOverlay');
     const statusText = document.getElementById('statusText');
-    if (overlay && statusText) { 
-        statusText.innerText = text; 
-        if (show) {
-            overlay.classList.remove('hidden');
-        } else {
-            overlay.classList.add('hidden');
-            if(document.getElementById('progressBar')) document.getElementById('progressBar').style.width = "0%";
-        }
+    if (overlay && statusText) {
+        statusText.innerText = text;
+        show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden');
     }
 }
 
@@ -202,15 +198,10 @@ function renderVerificationUI(email) {
             <div class="bg-white p-10 rounded-[3rem] shadow-xl border border-slate-100 max-w-md">
                 <div class="text-6xl mb-6">📧</div>
                 <h1 class="text-2xl font-bold text-slate-800 mb-4">يجب تفعيل حسابك أولاً</h1>
-                <p class="text-slate-500 mb-6 leading-relaxed">لقد أرسلنا رابط تفعيل لبريدك:<br><span class="font-bold text-blue-600">${email}</span></p>
-                <div class="flex flex-col gap-3">
-                    <button onclick="location.reload()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700">لقد فعلت الحساب، دخول ✅</button>
-                    <button id="logoutBtn" class="text-slate-400 text-sm font-bold hover:text-red-500">تسجيل الخروج</button>
-                </div>
+                <p class="text-slate-500 mb-6 leading-relaxed">أرسلنا رابط تفعيل لبريدك:<br><span class="font-bold text-blue-600">${email}</span></p>
+                <button onclick="location.reload()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold shadow-lg hover:bg-blue-700">لقد فعلت الحساب، دخول ✅</button>
             </div>
         </div>`;
-    document.getElementById('logoutBtn').onclick = () => signOut(auth).then(() => location.href = 'login.html');
 }
 
-// جعل دالة الخروج متاحة عالمياً
 window.handleLogout = () => signOut(auth).then(() => location.href = "login.html");
