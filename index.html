@@ -10,71 +10,59 @@
     
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { 
-            font-family: 'Cairo', sans-serif; 
-            background-color: #f1f5f9;
-        }
-        .loader-spin {
-            animation: spin 1s linear infinite;
-        }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        
-        /* تجميل شريط التمرير */
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #f1f1f1; }
-        ::-webkit-scrollbar-thumb { background: #3b82f6; border-radius: 10px; }
+        body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; margin: 0; }
+        .loader-screen { position: fixed; inset: 0; background: white; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #e2e8f0; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
-<body class="min-h-screen">
+<body>
 
-    <div id="accessDenied" class="hidden fixed inset-0 bg-white z-[100] flex flex-col items-center justify-center p-6 text-center">
-        <div class="text-8xl mb-6">⚠️</div>
+    <div id="initialLoader" class="loader-screen">
+        <div class="spinner"></div>
+        <p class="mt-4 text-slate-600 font-bold italic">جاري التحقق من الهوية... انتظر يا مهندس</p>
+    </div>
+
+    <div id="accessDenied" class="hidden min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div class="text-8xl mb-6">🚫</div>
         <h1 class="text-3xl font-bold text-slate-800 mb-4">عفواً، أنت لست مسجلاً</h1>
-        <p class="text-slate-500 mb-8 max-w-md">لا يمكنك الوصول لهذه الصفحة دون امتلاك حساب موثق في المنصة.</p>
-        <a href="register.html" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-transform active:scale-95">إنشاء حساب جديد الآن</a>
+        <p class="text-slate-500 mb-8 max-w-md">يجب إنشاء حساب أولاً لتتمكن من رفع التكليفات.</p>
+        <a href="register.html" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700">إنشاء حساب جديد</a>
     </div>
 
     <div id="mainContent" class="hidden">
-        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm">
-            <div class="max-w-5xl mx-auto px-4 py-4 flex justify-between items-center">
-                <div class="flex flex-col">
+        <header class="bg-white border-b border-slate-200 sticky top-0 z-40 shadow-sm p-4">
+            <div class="max-w-5xl mx-auto flex justify-between items-center">
+                <div>
                     <h2 class="text-lg font-bold text-slate-800">نرحب بك يا مهندس/ <span id="displayUserName" class="text-blue-600">...</span></h2>
                     <div class="flex gap-4 text-xs font-bold text-slate-400 mt-1">
-                        <span>ID: <span id="displayIndex" class="text-slate-600 italic">indexnumber</span></span>
-                        <span>الكلية: <span id="displayCollege" class="text-slate-600 italic">...</span></span>
+                        <span>ID: <span id="displayIndex" class="text-slate-600">indexnumber</span></span>
+                        <span>الكلية: <span id="displayCollege" class="text-slate-600">...</span></span>
                     </div>
                 </div>
-                <button id="logoutBtn" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors">خروج</button>
+                <button id="logoutBtn" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-xs font-bold">خروج</button>
             </div>
         </header>
 
         <main class="max-w-3xl mx-auto p-4 mt-8">
             <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
-                <div class="flex items-center justify-between mb-8">
-                    <h3 class="text-xl font-bold text-slate-800">📂 رفع تكليف الأسبوع</h3>
-                    <span class="bg-blue-100 text-blue-600 px-4 py-1 rounded-full text-xs font-bold" id="currentWeekTag">الأسبوع الأول</span>
-                </div>
+                <h3 class="text-xl font-bold text-slate-800 mb-8">📂 رفع تكليف الأسبوع</h3>
 
-                <div id="dropZone" onclick="document.getElementById('imageInput').click()" class="border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group">
+                <div id="dropZone" onclick="document.getElementById('imageInput').click()" class="border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all group">
                     <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
-                    <div class="text-6xl mb-4 group-hover:scale-110 transition-transform duration-300">📸</div>
-                    <p class="text-lg font-bold text-slate-700">اضغط هنا لاختيار صور الواجب</p>
-                    <p class="text-slate-400 text-sm mt-2 italic">يمكنك اختيار أكثر من صورة (تصوير الورق)</p>
+                    <div class="text-6xl mb-4 group-hover:scale-110 transition-transform">📸</div>
+                    <p class="text-lg font-bold text-slate-700 italic">اضغط هنا لاختيار صور الواجب</p>
                     <div id="fileStatus" class="mt-4 inline-block px-4 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold hidden"></div>
                 </div>
 
-                <button id="convertBtn" class="w-full mt-8 bg-slate-800 text-white py-5 rounded-2xl font-bold text-lg hover:bg-slate-900 shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-3">
+                <button id="convertBtn" class="w-full mt-8 bg-slate-800 text-white py-5 rounded-2xl font-bold text-lg hover:bg-slate-900 shadow-lg transition-all">
                     تحويل الصور ومعاينة الـ PDF 📄
                 </button>
 
-                <div id="previewArea" class="hidden mt-10 space-y-4 animate-in fade-in duration-500">
-                    <div class="flex items-center justify-between">
-                        <h4 class="font-bold text-slate-800 flex items-center gap-2">👁️ معاينة الملف قبل الإرسال:</h4>
-                        <span class="text-xs text-slate-400 italic">تأكد أن الصور واضحة ومرتبة</span>
-                    </div>
-                    <div id="pdfFrame" class="w-full h-[500px] bg-slate-100 rounded-[2rem] overflow-hidden border-2 border-slate-200 shadow-inner">
-                        </div>
-                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl shadow-emerald-100 hover:bg-emerald-700 transition-all">
+                <div id="previewArea" class="hidden mt-10 space-y-4">
+                    <h4 class="font-bold text-slate-800">👁️ معاينة الملف:</h4>
+                    <div id="pdfFrame" class="w-full h-[500px] bg-slate-100 rounded-[2rem] overflow-hidden border-2 shadow-inner"></div>
+                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl hover:bg-emerald-700 transition-all">
                         إرسال الملف النهائي لليدر 🚀
                     </button>
                 </div>
@@ -83,14 +71,13 @@
     </div>
 
     <div id="statusOverlay" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-6 text-center">
-        <div class="bg-white p-10 rounded-[3rem] max-w-sm w-full shadow-2xl">
-            <div class="loader-spin inline-block w-12 h-12 border-4 border-blue-600 border-t-transparent rounded-full mb-6"></div>
-            <p id="statusText" class="text-lg font-bold text-slate-800 leading-relaxed">جاري معالجة ورفع الملف... يرجى الانتظار حتى يكتمل الرفع</p>
+        <div class="bg-white p-10 rounded-[3rem] max-w-sm w-full">
+            <div class="spinner mx-auto mb-6"></div>
+            <p id="statusText" class="text-lg font-bold text-slate-800">جاري المعالجة...</p>
         </div>
     </div>
 
     <script type="module">
-        // استيراد Firebase
         import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
         import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
         import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
@@ -98,19 +85,18 @@
 
         // --- ضع مفاتيحك هنا ---
         const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
+            apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
+            authDomain: "tasaleem-c2218.firebaseapp.com",
+            databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
+            projectId: "tasaleem-c2218",
+            storageBucket: "tasaleem-c2218.firebasestorage.app",
+            messagingSenderId: "877790432223",
+            appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
         };
 
         const CLOUD_NAME = "dilxydgpn";
         const UPLOAD_PRESET = "student_upload";
 
-        // تهيئة
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getDatabase(app);
@@ -119,10 +105,11 @@
         let currentUserData = null;
         let finalPdfBlob = null;
 
-        // التحقق من حالة المستخدم
+        // دالة التحقق من المستخدم عند تحميل الصفحة
         onAuthStateChanged(auth, async (user) => {
-            const denied = document.getElementById('accessDenied');
+            const loader = document.getElementById('initialLoader');
             const main = document.getElementById('mainContent');
+            const denied = document.getElementById('accessDenied');
 
             if (user) {
                 try {
@@ -130,26 +117,24 @@
                     if (snap.exists()) {
                         currentUserData = snap.val();
                         document.getElementById('displayUserName').innerText = currentUserData.fullName;
-                        document.getElementById('displayIndex').innerText = currentUserData.academicIndex || "indexnumber";
+                        document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
                         document.getElementById('displayCollege').innerText = currentUserData.college;
                         
                         main.classList.remove('hidden');
-                        denied.classList.add('hidden');
                     } else {
-                        showDenied();
+                        denied.classList.remove('hidden');
                     }
-                } catch (e) { showDenied(); }
+                } catch (e) {
+                    denied.classList.remove('hidden');
+                }
             } else {
-                showDenied();
+                denied.classList.remove('hidden');
             }
+            loader.style.opacity = '0';
+            setTimeout(() => loader.classList.add('hidden'), 500);
         });
 
-        function showDenied() {
-            document.getElementById('accessDenied').classList.remove('hidden');
-            document.getElementById('mainContent').classList.add('hidden');
-        }
-
-        // تحديث واجهة اختيار الصور
+        // منطق اختيار الصور والتحويل (كما في الأكواد السابقة)
         document.getElementById('imageInput').onchange = (e) => {
             const count = e.target.files.length;
             if (count > 0) {
@@ -159,82 +144,67 @@
             }
         };
 
-        // منطق التحويل
         document.getElementById('convertBtn').onclick = async () => {
             const files = Array.from(document.getElementById('imageInput').files);
             if (files.length === 0) return alert("اختر صوراً أولاً!");
-
-            toggleStatus(true, "جاري رفع الصور وتحسينها... انتظر قليلاً ⏳");
+            toggleStatus(true, "جاري تحسين الصور ورفعها... ⏳");
 
             try {
                 const urls = [];
                 for (let file of files) {
-                    const formData = new FormData();
-                    formData.append("file", file);
-                    formData.append("upload_preset", UPLOAD_PRESET);
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: formData });
+                    const fd = new FormData();
+                    fd.append("file", file);
+                    fd.append("upload_preset", UPLOAD_PRESET);
+                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: fd });
                     const data = await res.json();
                     urls.push(data.secure_url);
                 }
 
-                toggleStatus(true, "جاري إنشاء ملف الـ PDF... 📄");
+                toggleStatus(true, "جاري إنشاء الـ PDF... 📄");
                 const { jsPDF } = window.jspdf;
                 const doc = new jsPDF();
-                
                 for (let i = 0; i < urls.length; i++) {
                     if (i > 0) doc.addPage();
-                    const imgData = await getBase64(urls[i]);
-                    // مقاسات A4 بالمليمتر
-                    doc.addImage(imgData, 'JPEG', 10, 10, 190, 280);
+                    const img = await getBase64(urls[i]);
+                    doc.addImage(img, 'JPEG', 10, 10, 190, 280);
                 }
 
                 finalPdfBlob = doc.output('blob');
                 const pdfUrl = URL.createObjectURL(finalPdfBlob);
-                
                 document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
                 document.getElementById('previewArea').classList.remove('hidden');
                 toggleStatus(false);
-                
-                // سحب الصفحة للمعاينة تلقائياً
-                document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
-
             } catch (err) {
-                alert("خطأ: " + err.message);
+                alert("حدث خطأ: " + err.message);
                 toggleStatus(false);
             }
         };
 
-        // الإرسال النهائي
         document.getElementById('finalSubmit').onclick = async () => {
             if (!finalPdfBlob) return;
-            toggleStatus(true, "جاري الرفع النهائي لسحابة الليدر... لا تغلق الصفحة 🚀");
-
+            toggleStatus(true, "جاري الرفع النهائي لليدر... لا تغلق الصفحة 🚀");
             try {
-                const week = "الأسبوع_الأول";
                 const fileName = `${currentUserData.academicIndex}_${currentUserData.fullName}.pdf`;
-                const storagePath = sRef(storage, `assignments/${week}/${fileName}`);
-
+                const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
                 await uploadBytes(storagePath, finalPdfBlob);
                 const downloadURL = await getDownloadURL(storagePath);
 
-                await set(ref(db, `submissions/${week}/${auth.currentUser.uid}`), {
+                await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
                     studentName: currentUserData.fullName,
                     index: currentUserData.academicIndex,
-                    college: currentUserData.college,
                     fileUrl: downloadURL,
+                    college: currentUserData.college,
                     submittedAt: new Date().toLocaleString('ar-EG')
                 });
 
-                toggleStatus(true, "تم رفع الملف بنجاح! شكراً لك يا مهندس ✅");
-                setTimeout(() => { toggleStatus(false); }, 4000);
-
+                toggleStatus(true, "تم الرفع بنجاح! يمكنك الخروج ✅");
+                setTimeout(() => toggleStatus(false), 3000);
             } catch (err) {
                 alert("فشل الرفع: " + err.message);
                 toggleStatus(false);
             }
         };
 
-        // دوال مساعدة
         async function getBase64(url) {
             const r = await fetch(url);
             const b = await r.blob();
