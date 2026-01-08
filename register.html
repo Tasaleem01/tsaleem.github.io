@@ -22,7 +22,7 @@
             <h2 class="text-3xl font-bold text-slate-800">حساب مهندس جديد ⚡</h2>
             <p class="text-slate-500 mt-2 text-sm">يرجى إدخال بياناتك بدقة لتتمكن من رفع التكليفات</p>
         </div>
-        
+
         <form id="regForm" class="space-y-4">
             <div>
                 <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الاسم الثلاثي (على الأقل)</label>
@@ -62,7 +62,7 @@
                 إنشاء الحساب وتوثيقه 📧
             </button>
 
-            <div id="regMessage" class="hidden text-center font-bold p-4 rounded-2xl text-sm animate-pulse"></div>
+            <div id="regMessage" class="hidden text-center font-bold p-4 rounded-2xl text-sm mt-4"></div>
 
             <p class="text-center text-slate-400 text-xs mt-4">
                 لديك حساب بالفعل؟ <a href="index.html" class="text-blue-600 font-bold underline">سجل دخولك هنا</a>
@@ -70,86 +70,6 @@
         </form>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-
-        // ضع بياناتك هنا
-        const firebaseConfig = {
-            apiKey: "YOUR_API_KEY",
-            authDomain: "YOUR_AUTH_DOMAIN",
-            databaseURL: "YOUR_DATABASE_URL",
-            projectId: "YOUR_PROJECT_ID",
-            storageBucket: "YOUR_STORAGE_BUCKET",
-            messagingSenderId: "YOUR_SENDER_ID",
-            appId: "YOUR_APP_ID"
-        };
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
-
-        const regForm = document.getElementById('regForm');
-
-        regForm.onsubmit = async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('regName').value.trim();
-            const email = document.getElementById('regEmail').value.trim();
-            const index = document.getElementById('regIndex').value.trim() || "indexnumber";
-            const college = document.getElementById('regCollege').value;
-            const pass = document.getElementById('regPass').value;
-            const confirm = document.getElementById('regConfirm').value;
-
-            // 1. التحقق من الاسم الثلاثي (الدالة المطلوبة)
-            const nameParts = name.split(/\s+/).filter(p => p.length > 0);
-            if (nameParts.length < 3) {
-                return showMessage("يرجى إدخال اسمك الرباعي أو الثلاثي كاملاً!", "red");
-            }
-
-            // 2. التحقق من تطابق كلمة المرور
-            if (pass !== confirm) {
-                return showMessage("كلمات المرور غير متطابقة!", "red");
-            }
-            if (pass.length < 6) {
-                return showMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "red");
-            }
-
-            showMessage("جاري إنشاء الحساب... يرجى الانتظار ⏳", "blue");
-
-            try {
-                // 3. إنشاء الحساب في Firebase
-                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
-                const user = userCredential.user;
-
-                // 4. إرسال بريد التوثيق
-                await sendEmailVerification(user);
-
-                // 5. حفظ البيانات في Realtime Database
-                await set(ref(db, 'users/' + user.uid), {
-                    fullName: name,
-                    academicIndex: index,
-                    college: college,
-                    email: email,
-                    role: "student"
-                });
-
-                showMessage("✅ تم إنشاء الحساب بنجاح! تفقد بريدك الإلكتروني الآن لتفعيل الحساب قبل الدخول.", "green");
-                regForm.reset();
-
-            } catch (error) {
-                let msg = "حدث خطأ أثناء التسجيل";
-                if (error.code === "auth/email-already-in-use") msg = "هذا البريد مسجل بالفعل!";
-                showMessage(msg + ": " + error.message, "red");
-            }
-        };
-
-        function showMessage(text, color) {
-            const msgDiv = document.getElementById('regMessage');
-            msgDiv.innerText = text;
-            msgDiv.className = `block text-center font-bold p-4 rounded-2xl text-sm bg-${color}-50 text-${color}-700 border border-${color}-100 mt-4`;
-        }
-    </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
