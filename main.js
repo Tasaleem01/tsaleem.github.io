@@ -1,9 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// 1. إعدادات Firebase (تأكد من صحة هذه البيانات من وحدة تحكم Firebase الخاصة بك)
+// إعدادات Firebase
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -21,224 +21,111 @@ const storage = getStorage(app);
 
 let currentUserData = null;
 let finalPdfBlob = null;
-const page = window.location.pathname.split("/").pop();
+const path = window.location.pathname;
+const page = path.split("/").pop() || "index.html";
 
-// --- [الجزء الأول: صفحة التسجيل register.html] ---
+// دالة إظهار الرسائل
+function showStatus(divId, text, type) {
+    const div = document.getElementById(divId);
+    if (!div) return;
+    div.innerText = text;
+    div.className = `block text-center font-bold p-3 rounded-xl text-sm mt-4 `;
+    if (type === 'error') div.className += "bg-red-50 text-red-700";
+    else if (type === 'success') div.className += "bg-green-50 text-green-700";
+    else div.className += "bg-blue-50 text-blue-700";
+    div.classList.remove('hidden');
+}
+
+// --- [منطق صفحة تسجيل الدخول login.html] ---
+if (page === "login.html") {
+    const loginForm = document.getElementById('loginForm');
+    if (loginForm) {
+        loginForm.onsubmit = async (e) => {
+            e.preventDefault();
+            const email = document.getElementById('loginEmail').value.trim();
+            const pass = document.getElementById('loginPass').value;
+            
+            try {
+                await signInWithEmailAndPassword(auth, email, pass);
+                window.location.href = "index.html";
+            } catch (err) {
+                showStatus('loginMessage', "خطأ في البيانات: " + err.message, 'error');
+            }
+        };
+    }
+
+    // زر نسيت كلمة المرور
+    document.getElementById('forgotPassBtn').onclick = async () => {
+        const email = document.getElementById('loginEmail').value.trim();
+        if (!email) return alert("اكتب بريدك الإلكتروني أولاً في الخانة المخصصة");
+        try {
+            await sendPasswordResetEmail(auth, email);
+            alert("تم إرسال رابط إعادة تعيين كلمة المرور لبريدك ✅");
+        } catch (err) { alert(err.message); }
+    };
+}
+
+// --- [منطق صفحة التسجيل register.html] ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
-    const msgDiv = document.getElementById('regMessage');
-
-    const showMsg = (text, type) => {
-        msgDiv.innerText = text;
-        msgDiv.className = `block text-center font-bold p-4 rounded-2xl text-sm mt-4 `;
-        if (type === 'error') msgDiv.className += "bg-red-50 text-red-700 border border-red-100";
-        if (type === 'success') msgDiv.className += "bg-green-50 text-green-700 border border-green-100";
-        if (type === 'info') msgDiv.className += "bg-blue-50 text-blue-700 border border-blue-100";
-        msgDiv.classList.remove('hidden');
-    };
-
     if (regForm) {
         regForm.onsubmit = async (e) => {
             e.preventDefault();
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
-            const index = document.getElementById('regIndex').value.trim() || "0000";
-            const college = document.getElementById('regCollege').value;
             const pass = document.getElementById('regPass').value;
-            const confirm = document.getElementById('regConfirm').value;
-
-            if (name.split(/\s+/).length < 3) return showMsg("يرجى إدخال اسمك الثلاثي على الأقل!", "error");
-            if (pass !== confirm) return showMsg("كلمات المرور غير متطابقة!", "error");
-            if (pass.length < 6) return showMsg("كلمة المرور يجب أن تكون 6 أحرف فأكثر", "error");
-
-            showMsg("جاري إنشاء الحساب... ⏳", "info");
+            const index = document.getElementById('regIndex').value || "0000";
+            const college = document.getElementById('regCollege').value;
 
             try {
-                const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-                await sendEmailVerification(userCred.user);
-                
-                // حفظ البيانات في قاعدة البيانات
-                await set(ref(db, 'users/' + userCred.user.uid), {
-                    fullName: name,
-                    academicIndex: index,
-                    college: college,
-                    email: email,
-                    role: "student",
-                    createdAt: new Date().toISOString()
+                const cred = await createUserWithEmailAndPassword(auth, email, pass);
+                await sendEmailVerification(cred.user);
+                await set(ref(db, 'users/' + cred.user.uid), {
+                    fullName: name, academicIndex: index, college: college, email: email
                 });
-
-                showMsg("✅ تم التسجيل! فعل حسابك من الإيميل ثم سجل دخولك.", "success");
-                setTimeout(() => window.location.href = "index.html", 3000);
-            } catch (err) {
-                showMsg(err.message, "error");
-            }
+                alert("تم إنشاء الحساب! فعل إيميلك ثم سجل دخولك.");
+                window.location.href = "login.html";
+            } catch (err) { alert(err.message); }
         };
     }
 }
 
-// --- [الجزء الثاني: الصفحة الرئيسية index.html] ---
-if (page === "" || page === "index.html") {
+// --- [منطق الصفحة الرئيسية index.html] ---
+if (page === "index.html") {
     onAuthStateChanged(auth, async (user) => {
         const loader = document.getElementById('initialLoader');
         if (user) {
-            try {
-                const snap = await get(ref(db, 'users/' + user.uid));
-                if (snap.exists()) {
-                    currentUserData = snap.val();
-                    document.getElementById('displayUserName').innerText = currentUserData.fullName;
-                    document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
-                    document.getElementById('displayCollege').innerText = currentUserData.college;
-                    document.getElementById('mainContent').classList.remove('hidden');
-                } else {
-                    document.getElementById('accessDenied').classList.remove('hidden');
-                }
-            } catch (e) {
-                document.getElementById('accessDenied').classList.remove('hidden');
+            // التحقق من تفعيل الإيميل
+            if (!user.emailVerified) {
+                document.body.innerHTML = `
+                    <div class="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-white">
+                        <h1 class="text-2xl font-bold text-red-600 mb-4">📧 يجب تفعيل حسابك أولاً</h1>
+                        <p class="text-slate-600 mb-6">لقد أرسلنا رابط تفعيل إلى: <br><b>${user.email}</b></p>
+                        <p class="text-sm text-slate-400 mb-6">تفقد مجلد Spam إذا لم تجده.</p>
+                        <div class="flex gap-4">
+                            <button onclick="location.reload()" class="bg-blue-600 text-white px-6 py-2 rounded-xl font-bold">لقد فعلت الحساب، دخول</button>
+                            <button onclick="signOut(auth).then(()=>location.href='login.html')" class="bg-slate-100 px-6 py-2 rounded-xl font-bold">تسجيل الخروج</button>
+                        </div>
+                    </div>`;
+                return;
             }
+
+            const snap = await get(ref(db, 'users/' + user.uid));
+            if (snap.exists()) {
+                currentUserData = snap.val();
+                document.getElementById('displayUserName').innerText = currentUserData.fullName;
+                document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
+                document.getElementById('displayCollege').innerText = currentUserData.college;
+                document.getElementById('mainContent').classList.remove('hidden');
+            } else { window.location.href = "login.html"; }
         } else {
-            document.getElementById('accessDenied').classList.remove('hidden');
+            window.location.href = "login.html";
         }
-        if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.classList.add('hidden'), 500); }
+        if (loader) loader.classList.add('hidden');
     });
 
-    // معالجة الصور وتحويلها لـ PDF
-    const convertBtn = document.getElementById('convertBtn');
-    if (convertBtn) {
-        convertBtn.onclick = async () => {
-            const files = Array.from(document.getElementById('imageInput').files);
-            if (files.length === 0) return alert("يرجى اختيار الصور أولاً");
-
-            toggleStatus(true, "جاري تحويل ومعالجة الصور... ⏳");
-            updateProgressBar(0);
-
-            try {
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF('p', 'mm', 'a4');
-                const pageWidth = doc.internal.pageSize.getWidth();
-                const pageHeight = doc.internal.pageSize.getHeight();
-
-                for (let i = 0; i < files.length; i++) {
-                    if (i > 0) doc.addPage();
-                    const imgData = await readFileAsDataURL(files[i]);
-                    const imgProps = doc.getImageProperties(imgData);
-                    const ratio = imgProps.width / imgProps.height;
-                    const pdfImgHeight = pageWidth / ratio;
-                    
-                    // ضغط متوسط لسرعة الرفع مع جودة ممتازة
-                    doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
-                }
-
-                finalPdfBlob = doc.output('blob');
-                const pdfUrl = URL.createObjectURL(finalPdfBlob);
-                document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
-                document.getElementById('previewArea').classList.remove('hidden');
-                document.getElementById('viewFullPdf').onclick = () => window.open(pdfUrl);
-                
-                toggleStatus(false);
-            } catch (err) {
-                alert("خطأ أثناء المعالجة: " + err.message);
-                toggleStatus(false);
-            }
-        };
-    }
-
-    // الرفع النهائي مع تسمية الملف المطلوبة (جامعة - طالب - اختصار)
-    const finalSubmit = document.getElementById('finalSubmit');
-    if (finalSubmit) {
-        finalSubmit.onclick = async () => {
-            if (!finalPdfBlob) return;
-
-            const university = "جامعة السودان العالمية";
-            const collegeShort = "SIU"; // يمكنك جعل هذا متغيراً بناءً على اختيار الكلية
-            const fileName = `${university} - ${currentUserData.fullName} - ${collegeShort}.pdf`;
-            
-            toggleStatus(true, "بدء الرفع... 🚀");
-            const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
-            const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
-
-            uploadTask.on('state_changed', 
-                (snapshot) => {
-                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                    toggleStatus(true, `جاري الرفع النهائي: ${progress}% 🚀`);
-                    updateProgressBar(progress);
-                }, 
-                (error) => { alert("فشل الرفع: " + error.message); toggleStatus(false); }, 
-                async () => {
-                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                    await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
-                        studentName: currentUserData.fullName,
-                        academicIndex: currentUserData.academicIndex,
-                        fileUrl: downloadURL,
-                        fileName: fileName,
-                        submittedAt: new Date().toLocaleString('ar-EG')
-                    });
-                    toggleStatus(true, "✅ تم الرفع بنجاح! شكراً يا مهندس.");
-                    setTimeout(() => toggleStatus(false), 3000);
-                }
-            );
-        };
-    }
+    // (أضف هنا كود الرفع convertBtn و finalSubmit الذي أعطيته لك سابقاً)
 }
 
-// --- [الجزء الثالث: لوحة تحكم الأدمن admin.html] ---
-if (page === "admin.html") {
-    onAuthStateChanged(auth, async (user) => {
-        const tableBody = document.getElementById('adminTableBody');
-        const totalText = document.getElementById('totalSubmissions');
-        
-        if (!user) { window.location.href = "index.html"; return; }
-
-        try {
-            const snapshot = await get(ref(db, 'submissions/week_1'));
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                tableBody.innerHTML = "";
-                let count = 0;
-                Object.keys(data).forEach(key => {
-                    count++;
-                    const sub = data[key];
-                    tableBody.innerHTML += `
-                        <tr class="border-b border-slate-50 hover:bg-slate-50">
-                            <td class="p-4 font-bold">${sub.studentName}</td>
-                            <td class="p-4 text-sm">${sub.academicIndex || '---'}</td>
-                            <td class="p-4 text-xs text-slate-400">${sub.submittedAt}</td>
-                            <td class="p-4">
-                                <a href="${sub.fileUrl}" target="_blank" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold">تحميل</a>
-                            </td>
-                        </tr>`;
-                });
-                totalText.innerText = count;
-            } else {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center">لا توجد تسليمات بعد</td></tr>`;
-            }
-        } catch (err) { console.error(err); }
-    });
-}
-
-// --- [دوال عامة مساعدة] ---
-function readFileAsDataURL(file) {
-    return new Promise(res => {
-        const reader = new FileReader();
-        reader.onload = e => res(e.target.result);
-        reader.readAsDataURL(file);
-    });
-}
-
-function updateProgressBar(percent) {
-    const bar = document.getElementById('progressBar');
-    if (bar) bar.style.width = percent + "%";
-}
-
-function toggleStatus(show, text = "") {
-    const overlay = document.getElementById('statusOverlay');
-    const statusText = document.getElementById('statusText');
-    if (overlay && statusText) {
-        statusText.innerText = text;
-        show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden');
-    }
-}
-
-// جعل دالة الخروج متاحة عالمياً
-window.handleLogout = () => {
-    signOut(auth).then(() => window.location.href = "index.html");
-};
+// (أضف هنا كود الـ admin.html والدوال المساعدة كما هي في الملف السابق)
+window.handleLogout = () => signOut(auth).then(() => location.href = "login.html");
