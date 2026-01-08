@@ -3,48 +3,58 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إنشاء حساب | منصة التسليم</title>
+    <title>الرئيسية | منصة التسليم</title>
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
     <style> @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap'); body { font-family: 'Cairo', sans-serif; } </style>
 </head>
-<body class="bg-slate-100 flex items-center justify-center p-4 min-h-screen">
-    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
-        <h2 class="text-2xl font-bold text-center mb-8 text-slate-800">إنشاء حساب مهندس جديد</h2>
-        
-        <form id="regForm" class="space-y-4">
-            <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الاسم الثلاثي على الأقل</label>
-                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-            </div>
+<body class="bg-slate-50 min-h-screen">
 
-            <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الرقم الجامعي / Index</label>
-                <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-            </div>
-
-            <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الجامعة والتخصص</label>
-                <select id="regCollege" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-                    <option value="السودان العالمية_كهرباء">السودان العالمية - هندسة كهرباء</option>
-                    <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
-                    <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
-                    <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
-                    <option value="الحياة_طبية">كلية الحياة - هندسة طبية</option>
-                    <option value="الحياة_كهرباء">كلية الحياة - هندسة كهرباء</option>
-                    <option value="الحياة_اتصالات">كلية الحياة - اتصالات</option>
-                </select>
-            </div>
-
-            <div class="grid grid-cols-2 gap-3">
-                <input type="password" id="regPass" placeholder="كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-            </div>
-
-            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all shadow-lg">إنشاء الحساب وتوثيقه 📧</button>
-            <div id="regMessage" class="hidden text-center font-bold p-3 rounded-xl mt-4"></div>
-        </form>
+    <div id="accessDenied" class="hidden fixed inset-0 bg-white z-50 flex flex-col items-center justify-center p-6 text-center">
+        <div class="text-6xl mb-4">🚫</div>
+        <h1 class="text-2xl font-bold text-slate-800 mb-2">عفواً، أنت لست مسجلاً لدينا</h1>
+        <p class="text-slate-500 mb-6">يجب إنشاء حساب وتوثيقه لتتمكن من رفع التكليفات.</p>
+        <a href="register.html" class="bg-blue-600 text-white px-8 py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700">إنشاء حساب جديد</a>
     </div>
 
-    <script type="module" src="register.js"></script>
+    <div id="mainContent" class="hidden max-w-4xl mx-auto p-4 md:p-8">
+        <header class="bg-white rounded-3xl p-6 shadow-sm mb-6 flex justify-between items-center border border-slate-100">
+            <div>
+                <h2 class="text-lg font-bold text-slate-800 italic">مرحباً بك يا مهندس/ <span id="displayUserName" class="text-blue-600">--</span></h2>
+                <div class="flex gap-4 mt-1 text-sm text-slate-500 font-medium">
+                    <span>الرقم: <b id="displayIndex" class="text-slate-800 italic">indexnumber</b></span>
+                    <span>الكلية: <b id="displayCollege" class="text-slate-800 italic">--</b></span>
+                </div>
+            </div>
+            <button id="logoutBtn" class="bg-slate-100 text-slate-600 p-2 rounded-xl hover:bg-red-50 hover:text-red-500 transition-all text-xs font-bold">تسجيل خروج</button>
+        </header>
+
+        <section class="bg-white rounded-3xl p-8 shadow-sm border border-slate-100">
+            <h3 class="text-xl font-bold mb-6 flex items-center gap-2">📂 تسليم التكليف (الأسبوع <span id="currentWeek">الأول</span>)</h3>
+            
+            <div id="dropZone" class="border-2 border-dashed border-slate-200 rounded-3xl p-10 text-center hover:border-blue-400 cursor-pointer transition-all">
+                <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
+                <div class="text-4xl mb-3">📸</div>
+                <p class="font-bold text-slate-600">اضغط لاختيار صور التكليف</p>
+            </div>
+
+            <div id="previewArea" class="hidden mt-8">
+                <h4 class="font-bold mb-2">معاينة الملف:</h4>
+                <div id="pdfFrame" class="w-full h-80 bg-slate-100 rounded-2xl overflow-hidden border"></div>
+                <button id="finalSubmit" class="w-full mt-4 bg-emerald-600 text-white py-4 rounded-2xl font-bold shadow-lg shadow-emerald-100">إرسال الملف النهائي 🚀</button>
+            </div>
+
+            <button id="convertBtn" class="w-full mt-6 bg-blue-600 text-white py-4 rounded-2xl font-bold">تحويل ومعاينة الـ PDF 📄</button>
+        </section>
+
+        <div id="statusOverlay" class="hidden fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center">
+            <div class="bg-white p-8 rounded-3xl text-center shadow-2xl">
+                <div class="animate-spin text-4xl mb-4">⏳</div>
+                <p id="statusText" class="font-bold text-slate-800">جاري معالجة ورفع الملف... انتظر حتى يكتمل الرفع</p>
+            </div>
+        </div>
+    </div>
+
+    <script type="module" src="app.js"></script>
 </body>
 </html>
