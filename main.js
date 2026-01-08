@@ -31,7 +31,7 @@ if (page === "register.html") {
             e.preventDefault();
             const name = document.getElementById('regName').value.trim();
             const email = document.getElementById('regEmail').value.trim();
-            const index = document.getElementById('regIndex').value.trim() || "indexnumber";
+            const index = document.getElementById('regIndex').value.trim() || "0000";
             const college = document.getElementById('regCollege').value;
             const pass = document.getElementById('regPass').value;
 
@@ -51,7 +51,6 @@ if (page === "register.html") {
 
 // --- [الجزء الثاني: الصفحة الرئيسية] ---
 if (page === "" || page === "index.html") {
-    // التحقق من حالة الدخول
     onAuthStateChanged(auth, async (user) => {
         const loader = document.getElementById('initialLoader');
         if (user) {
@@ -67,13 +66,12 @@ if (page === "" || page === "index.html") {
         if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.classList.add('hidden'), 500); }
     });
 
-    // تحويل الصور ومعالجتها
     document.getElementById('convertBtn').onclick = async () => {
         const files = Array.from(document.getElementById('imageInput').files);
         if (files.length === 0) return alert("يرجى اختيار الصور أولاً");
 
         toggleStatus(true, "جاري تحويل ومعالجة الصور... ⏳");
-        updateProgressBar(0); // تصغير الشريط للصفر عند البدء
+        updateProgressBar(0);
 
         try {
             const { jsPDF } = window.jspdf;
@@ -87,8 +85,6 @@ if (page === "" || page === "index.html") {
                 const imgProps = doc.getImageProperties(imgData);
                 const ratio = imgProps.width / imgProps.height;
                 const pdfImgHeight = pageWidth / ratio;
-                
-                // ضغط ذكي 'MEDIUM' للحفاظ على الجودة وسرعة الرفع
                 doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
             }
 
@@ -103,12 +99,17 @@ if (page === "" || page === "index.html") {
         } catch (err) { alert(err.message); toggleStatus(false); }
     };
 
-    // الرفع النهائي مع النسبة المئوية الحقيقية
     document.getElementById('finalSubmit').onclick = async () => {
         if (!finalPdfBlob) return;
         
+        // --- تحديد مسمى الكلية والجامعة ---
+        const university = "جامعة السودان العالمية";
+        const collegeShort = (currentUserData.college === university) ? "SIU" : "COL"; // اختصار الكلية
+        
+        // إنشاء اسم الملف المطلوب: جامعة - طالب - اختصار كلية
+        const fileName = `${university} - ${currentUserData.fullName} - ${collegeShort}.pdf`;
+        
         const week = "الأسبوع_الأول";
-        const fileName = `${currentUserData.academicIndex}_${currentUserData.fullName}.pdf`;
         const storagePath = sRef(storage, `assignments/${week}/${fileName}`);
         
         const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
@@ -117,7 +118,7 @@ if (page === "" || page === "index.html") {
             (snapshot) => {
                 const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
                 toggleStatus(true, `جاري الرفع النهائي: ${progress}% 🚀`);
-                updateProgressBar(progress); // تحديث شريط التحميل البصري
+                updateProgressBar(progress);
             }, 
             (error) => {
                 alert("فشل الرفع: " + error.message);
@@ -127,8 +128,10 @@ if (page === "" || page === "index.html") {
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
                 await set(ref(db, `submissions/${week}/${auth.currentUser.uid}`), {
                     studentName: currentUserData.fullName,
-                    academicIndex: currentUserData.academicIndex,
+                    university: university,
+                    college: currentUserData.college,
                     fileUrl: downloadURL,
+                    fileName: fileName,
                     submittedAt: new Date().toLocaleString('ar-EG')
                 });
                 updateProgressBar(100);
