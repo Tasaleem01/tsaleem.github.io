@@ -1,107 +1,52 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <title>لوحة تحكم الليدر | الإشراف</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+<body class="bg-slate-900 text-white min-h-screen p-8">
 
-// --- 1. إعدادات Firebase (نفس إعدادات مشروعك) ---
-const firebaseConfig = {
-    apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
-    authDomain: "tasaleem-c2218.firebaseapp.com",
-    databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
-    projectId: "tasaleem-c2218",
-    storageBucket: "tasaleem-c2218.firebasestorage.app",
-    messagingSenderId: "877790432223",
-    appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
-};
+    <div class="max-w-6xl mx-auto">
+        <header class="flex justify-between items-center mb-10 border-b border-slate-700 pb-5">
+            <h1 class="text-3xl font-bold text-blue-400">لوحة تحكم ليدر الكهرباء ⚡</h1>
+            <button id="logoutBtn" class="bg-red-500 px-4 py-2 rounded-lg text-sm">تسجيل خروج</button>
+        </header>
 
-const app = initializeApp(firebaseConfig);
-const auth = getAuth(app);
-const db = getDatabase(app);
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <p class="text-slate-400">إجمالي المسجلين</p>
+                <h3 id="totalStudents" class="text-4xl font-bold">0</h3>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <p class="text-slate-400">تسليمات الأسبوع الحالي</p>
+                <h3 id="weekSubmissions" class="text-4xl font-bold text-green-400">0</h3>
+            </div>
+            <div class="bg-slate-800 p-6 rounded-xl border border-slate-700">
+                <button id="downloadZipBtn" class="w-full h-full bg-blue-600 hover:bg-blue-700 rounded-lg font-bold text-xl transition-all">
+                    تحميل ملف الأسبوع (ZIP) 📦
+                </button>
+            </div>
+        </div>
 
-let allSubmissions = [];
-
-// --- 2. التحقق من صلاحية الدخول وجلب البيانات ---
-onAuthStateChanged(auth, async (user) => {
-    if (!user) {
-        window.location.href = "login.html";
-        return;
-    }
-    loadDashboardData();
-});
-
-async function loadDashboardData() {
-    try {
-        // جلب عدد الطلاب الكلي
-        const usersSnap = await get(ref(db, 'users'));
-        if (usersSnap.exists()) {
-            document.getElementById('totalStudents').innerText = Object.keys(usersSnap.val()).length;
-        }
-
-        // جلب التسليمات
-        const subSnap = await get(ref(db, 'submissions/week_1'));
-        const tableBody = document.getElementById('adminTableBody');
-        tableBody.innerHTML = "";
-
-        if (subSnap.exists()) {
-            const data = subSnap.val();
-            allSubmissions = Object.values(data);
-            document.getElementById('weekSubmissions').innerText = allSubmissions.length;
-
-            allSubmissions.forEach(sub => {
-                const row = `
-                    <tr class="border-b border-slate-700 hover:bg-slate-700/50 transition-colors">
-                        <td class="p-4">${sub.studentName}</td>
-                        <td class="p-4 font-mono text-blue-300">${sub.academicIndex || '----'}</td>
-                        <td class="p-4 text-xs text-slate-400">${sub.submittedAt}</td>
-                        <td class="p-4">
-                            <a href="${sub.fileUrl}" target="_blank" class="text-green-400 hover:underline">عرض الملف 📄</a>
-                        </td>
+        <div class="bg-slate-800 rounded-xl overflow-hidden border border-slate-700">
+            <table class="w-full text-right">
+                <thead class="bg-slate-700 text-slate-300">
+                    <tr>
+                        <th class="p-4">الاسم</th>
+                        <th class="p-4">الرقم الجامعي</th>
+                        <th class="p-4">وقت التسليم</th>
+                        <th class="p-4">رابط الملف</th>
                     </tr>
-                `;
-                tableBody.innerHTML += row;
-            });
-        } else {
-            tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-500">لا توجد تسليمات لهذا الأسبوع بعد.</td></tr>`;
-        }
-    } catch (error) {
-        console.error("Error loading data:", error);
-    }
-}
+                </thead>
+                <tbody id="adminTableBody">
+                    </tbody>
+            </table>
+        </div>
+    </div>
 
-// --- 3. وظيفة تحميل الملفات كمجلد مضغوط (ZIP) ---
-document.getElementById('downloadZipBtn').onclick = async () => {
-    if (allSubmissions.length === 0) return alert("لا توجد ملفات لتحميلها!");
-
-    const btn = document.getElementById('downloadZipBtn');
-    const originalText = btn.innerText;
-    btn.innerText = "جاري التحضير... ⏳";
-    btn.disabled = true;
-
-    const zip = new JSZip();
-    const folder = zip.folder("تسليمات_الأسبوع_الأول");
-
-    try {
-        // تحميل كل ملف PDF من Cloudinary وإضافته للـ ZIP
-        const downloadPromises = allSubmissions.map(async (sub) => {
-            const response = await fetch(sub.fileUrl);
-            const blob = await response.blob();
-            // تسمية الملف داخل الـ ZIP بنفس الاسم المسجل
-            const fileName = `${sub.studentName} - ${sub.academicIndex}.pdf`;
-            folder.file(fileName, blob);
-        });
-
-        await Promise.all(downloadPromises);
-
-        // توليد ملف الـ ZIP وتحميله
-        const content = await zip.generateAsync({ type: "blob" });
-        saveAs(content, "Assignments_Week_1.zip");
-
-    } catch (error) {
-        alert("حدث خطأ أثناء تجميع الملفات: " + error.message);
-    } finally {
-        btn.innerText = originalText;
-        btn.disabled = false;
-    }
-};
-
-// تسجيل الخروج
-document.getElementById('logoutBtn').onclick = () => signOut(auth).then(() => location.href = "login.html");
+    <script type="module" src="admin.js"></script>
+</body>
+</html>
