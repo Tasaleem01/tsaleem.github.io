@@ -3,48 +3,153 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>إنشاء حساب | منصة التسليم</title>
+    <title>إنشاء حساب مهندس | منصة التسليم</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <style> @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap'); body { font-family: 'Cairo', sans-serif; } </style>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; }
+        .input-field {
+            width: 100%; padding: 0.85rem; border: 2px solid #f1f5f9; border-radius: 1.25rem;
+            outline: none; transition: all 0.3s; background: #f8fafc;
+        }
+        .input-field:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    </style>
 </head>
-<body class="bg-slate-100 flex items-center justify-center p-4 min-h-screen">
-    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
-        <h2 class="text-2xl font-bold text-center mb-8 text-slate-800">إنشاء حساب مهندس جديد</h2>
+<body class="min-h-screen flex items-center justify-center p-4">
+
+    <div class="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-slate-100">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-slate-800">حساب مهندس جديد ⚡</h2>
+            <p class="text-slate-500 mt-2 text-sm">يرجى إدخال بياناتك بدقة لتتمكن من رفع التكليفات</p>
+        </div>
         
         <form id="regForm" class="space-y-4">
             <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الاسم الثلاثي على الأقل</label>
-                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الاسم الثلاثي (على الأقل)</label>
+                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="input-field" required>
             </div>
 
             <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الرقم الجامعي / Index</label>
-                <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">البريد الإلكتروني (Gmail)</label>
+                <input type="email" id="regEmail" placeholder="example@gmail.com" class="input-field" required>
             </div>
 
-            <div>
-                <label class="block text-sm font-bold mb-1 mr-2">الجامعة والتخصص</label>
-                <select id="regCollege" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-                    <option value="السودان العالمية_كهرباء">السودان العالمية - هندسة كهرباء</option>
-                    <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
-                    <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
-                    <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
-                    <option value="الحياة_طبية">كلية الحياة - هندسة طبية</option>
-                    <option value="الحياة_كهرباء">كلية الحياة - هندسة كهرباء</option>
-                    <option value="الحياة_اتصالات">كلية الحياة - اتصالات</option>
-                </select>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الرقم الجامعي / Index</label>
+                    <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="input-field">
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الجامعة والتخصص</label>
+                    <select id="regCollege" class="input-field cursor-pointer">
+                        <option value="السودان العالمية_كهرباء">السودان العالمية - كهرباء</option>
+                        <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
+                        <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
+                        <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
+                        <option value="الحياة_طبية">الحياة - هندسة طبية</option>
+                        <option value="الحياة_كهرباء">الحياة - هندسة كهرباء</option>
+                        <option value="الحياة_اتصالات">الحياة - اتصالات</option>
+                    </select>
+                </div>
             </div>
 
-            <div class="grid grid-cols-2 gap-3">
-                <input type="password" id="regPass" placeholder="كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
-                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="password" id="regPass" placeholder="كلمة المرور" class="input-field" required>
+                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="input-field" required>
             </div>
 
-            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all shadow-lg">إنشاء الحساب وتوثيقه 📧</button>
-            <div id="regMessage" class="hidden text-center font-bold p-3 rounded-xl mt-4"></div>
+            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-900 transition-all shadow-lg active:scale-[0.98]">
+                إنشاء الحساب وتوثيقه 📧
+            </button>
+
+            <div id="regMessage" class="hidden text-center font-bold p-4 rounded-2xl text-sm animate-pulse"></div>
+
+            <p class="text-center text-slate-400 text-xs mt-4">
+                لديك حساب بالفعل؟ <a href="index.html" class="text-blue-600 font-bold underline">سجل دخولك هنا</a>
+            </p>
         </form>
     </div>
 
-    <script type="module" src="register.js"></script>
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        // ضع بياناتك هنا
+        const firebaseConfig = {
+            apiKey: "YOUR_API_KEY",
+            authDomain: "YOUR_AUTH_DOMAIN",
+            databaseURL: "YOUR_DATABASE_URL",
+            projectId: "YOUR_PROJECT_ID",
+            storageBucket: "YOUR_STORAGE_BUCKET",
+            messagingSenderId: "YOUR_SENDER_ID",
+            appId: "YOUR_APP_ID"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+
+        const regForm = document.getElementById('regForm');
+
+        regForm.onsubmit = async (e) => {
+            e.preventDefault();
+            
+            const name = document.getElementById('regName').value.trim();
+            const email = document.getElementById('regEmail').value.trim();
+            const index = document.getElementById('regIndex').value.trim() || "indexnumber";
+            const college = document.getElementById('regCollege').value;
+            const pass = document.getElementById('regPass').value;
+            const confirm = document.getElementById('regConfirm').value;
+
+            // 1. التحقق من الاسم الثلاثي (الدالة المطلوبة)
+            const nameParts = name.split(/\s+/).filter(p => p.length > 0);
+            if (nameParts.length < 3) {
+                return showMessage("يرجى إدخال اسمك الرباعي أو الثلاثي كاملاً!", "red");
+            }
+
+            // 2. التحقق من تطابق كلمة المرور
+            if (pass !== confirm) {
+                return showMessage("كلمات المرور غير متطابقة!", "red");
+            }
+            if (pass.length < 6) {
+                return showMessage("كلمة المرور يجب أن تكون 6 أحرف على الأقل", "red");
+            }
+
+            showMessage("جاري إنشاء الحساب... يرجى الانتظار ⏳", "blue");
+
+            try {
+                // 3. إنشاء الحساب في Firebase
+                const userCredential = await createUserWithEmailAndPassword(auth, email, pass);
+                const user = userCredential.user;
+
+                // 4. إرسال بريد التوثيق
+                await sendEmailVerification(user);
+
+                // 5. حفظ البيانات في Realtime Database
+                await set(ref(db, 'users/' + user.uid), {
+                    fullName: name,
+                    academicIndex: index,
+                    college: college,
+                    email: email,
+                    role: "student"
+                });
+
+                showMessage("✅ تم إنشاء الحساب بنجاح! تفقد بريدك الإلكتروني الآن لتفعيل الحساب قبل الدخول.", "green");
+                regForm.reset();
+
+            } catch (error) {
+                let msg = "حدث خطأ أثناء التسجيل";
+                if (error.code === "auth/email-already-in-use") msg = "هذا البريد مسجل بالفعل!";
+                showMessage(msg + ": " + error.message, "red");
+            }
+        };
+
+        function showMessage(text, color) {
+            const msgDiv = document.getElementById('regMessage');
+            msgDiv.innerText = text;
+            msgDiv.className = `block text-center font-bold p-4 rounded-2xl text-sm bg-${color}-50 text-${color}-700 border border-${color}-100 mt-4`;
+        }
+    </script>
 </body>
 </html>
