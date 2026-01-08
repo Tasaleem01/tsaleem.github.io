@@ -1,9 +1,9 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getStorage, ref as sRef, uploadBytesResumable, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
 
-// 1. إعدادات Firebase
+// 1. إعدادات Firebase (تأكد من صحة هذه البيانات من وحدة تحكم Firebase الخاصة بك)
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -23,9 +23,20 @@ let currentUserData = null;
 let finalPdfBlob = null;
 const page = window.location.pathname.split("/").pop();
 
-// --- [الجزء الأول: صفحة التسجيل] ---
+// --- [الجزء الأول: صفحة التسجيل register.html] ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
+    const msgDiv = document.getElementById('regMessage');
+
+    const showMsg = (text, type) => {
+        msgDiv.innerText = text;
+        msgDiv.className = `block text-center font-bold p-4 rounded-2xl text-sm mt-4 `;
+        if (type === 'error') msgDiv.className += "bg-red-50 text-red-700 border border-red-100";
+        if (type === 'success') msgDiv.className += "bg-green-50 text-green-700 border border-green-100";
+        if (type === 'info') msgDiv.className += "bg-blue-50 text-blue-700 border border-blue-100";
+        msgDiv.classList.remove('hidden');
+    };
+
     if (regForm) {
         regForm.onsubmit = async (e) => {
             e.preventDefault();
@@ -34,119 +45,181 @@ if (page === "register.html") {
             const index = document.getElementById('regIndex').value.trim() || "0000";
             const college = document.getElementById('regCollege').value;
             const pass = document.getElementById('regPass').value;
+            const confirm = document.getElementById('regConfirm').value;
 
-            if (name.split(/\s+/).length < 3) return alert("يرجى إدخال اسمك الثلاثي!");
+            if (name.split(/\s+/).length < 3) return showMsg("يرجى إدخال اسمك الثلاثي على الأقل!", "error");
+            if (pass !== confirm) return showMsg("كلمات المرور غير متطابقة!", "error");
+            if (pass.length < 6) return showMsg("كلمة المرور يجب أن تكون 6 أحرف فأكثر", "error");
+
+            showMsg("جاري إنشاء الحساب... ⏳", "info");
+
             try {
                 const userCred = await createUserWithEmailAndPassword(auth, email, pass);
                 await sendEmailVerification(userCred.user);
+                
+                // حفظ البيانات في قاعدة البيانات
                 await set(ref(db, 'users/' + userCred.user.uid), {
-                    fullName: name, academicIndex: index, college: college, email: email
+                    fullName: name,
+                    academicIndex: index,
+                    college: college,
+                    email: email,
+                    role: "student",
+                    createdAt: new Date().toISOString()
                 });
-                alert("تم التسجيل! فعل حسابك من الإيميل ثم سجل دخولك.");
-                window.location.href = "index.html";
-            } catch (err) { alert(err.message); }
+
+                showMsg("✅ تم التسجيل! فعل حسابك من الإيميل ثم سجل دخولك.", "success");
+                setTimeout(() => window.location.href = "index.html", 3000);
+            } catch (err) {
+                showMsg(err.message, "error");
+            }
         };
     }
 }
 
-// --- [الجزء الثاني: الصفحة الرئيسية] ---
+// --- [الجزء الثاني: الصفحة الرئيسية index.html] ---
 if (page === "" || page === "index.html") {
     onAuthStateChanged(auth, async (user) => {
         const loader = document.getElementById('initialLoader');
         if (user) {
-            const snap = await get(ref(db, 'users/' + user.uid));
-            if (snap.exists()) {
-                currentUserData = snap.val();
-                document.getElementById('displayUserName').innerText = currentUserData.fullName;
-                document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
-                document.getElementById('displayCollege').innerText = currentUserData.college;
-                document.getElementById('mainContent').classList.remove('hidden');
-            } else { document.getElementById('accessDenied').classList.remove('hidden'); }
-        } else { document.getElementById('accessDenied').classList.remove('hidden'); }
+            try {
+                const snap = await get(ref(db, 'users/' + user.uid));
+                if (snap.exists()) {
+                    currentUserData = snap.val();
+                    document.getElementById('displayUserName').innerText = currentUserData.fullName;
+                    document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
+                    document.getElementById('displayCollege').innerText = currentUserData.college;
+                    document.getElementById('mainContent').classList.remove('hidden');
+                } else {
+                    document.getElementById('accessDenied').classList.remove('hidden');
+                }
+            } catch (e) {
+                document.getElementById('accessDenied').classList.remove('hidden');
+            }
+        } else {
+            document.getElementById('accessDenied').classList.remove('hidden');
+        }
         if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.classList.add('hidden'), 500); }
     });
 
-    document.getElementById('convertBtn').onclick = async () => {
-        const files = Array.from(document.getElementById('imageInput').files);
-        if (files.length === 0) return alert("يرجى اختيار الصور أولاً");
+    // معالجة الصور وتحويلها لـ PDF
+    const convertBtn = document.getElementById('convertBtn');
+    if (convertBtn) {
+        convertBtn.onclick = async () => {
+            const files = Array.from(document.getElementById('imageInput').files);
+            if (files.length === 0) return alert("يرجى اختيار الصور أولاً");
 
-        toggleStatus(true, "جاري تحويل ومعالجة الصور... ⏳");
-        updateProgressBar(0);
+            toggleStatus(true, "جاري تحويل ومعالجة الصور... ⏳");
+            updateProgressBar(0);
 
-        try {
-            const { jsPDF } = window.jspdf;
-            const doc = new jsPDF('p', 'mm', 'a4');
-            const pageWidth = doc.internal.pageSize.getWidth();
-            const pageHeight = doc.internal.pageSize.getHeight();
+            try {
+                const { jsPDF } = window.jspdf;
+                const doc = new jsPDF('p', 'mm', 'a4');
+                const pageWidth = doc.internal.pageSize.getWidth();
+                const pageHeight = doc.internal.pageSize.getHeight();
 
-            for (let i = 0; i < files.length; i++) {
-                if (i > 0) doc.addPage();
-                const imgData = await readFileAsDataURL(files[i]);
-                const imgProps = doc.getImageProperties(imgData);
-                const ratio = imgProps.width / imgProps.height;
-                const pdfImgHeight = pageWidth / ratio;
-                doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
-            }
+                for (let i = 0; i < files.length; i++) {
+                    if (i > 0) doc.addPage();
+                    const imgData = await readFileAsDataURL(files[i]);
+                    const imgProps = doc.getImageProperties(imgData);
+                    const ratio = imgProps.width / imgProps.height;
+                    const pdfImgHeight = pageWidth / ratio;
+                    
+                    // ضغط متوسط لسرعة الرفع مع جودة ممتازة
+                    doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
+                }
 
-            finalPdfBlob = doc.output('blob');
-            const pdfUrl = URL.createObjectURL(finalPdfBlob);
-            document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
-            document.getElementById('previewArea').classList.remove('hidden');
-            document.getElementById('viewFullPdf').onclick = () => window.open(pdfUrl);
-            
-            toggleStatus(false);
-            document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
-        } catch (err) { alert(err.message); toggleStatus(false); }
-    };
-
-    document.getElementById('finalSubmit').onclick = async () => {
-        if (!finalPdfBlob) return;
-        
-        // --- تحديد مسمى الكلية والجامعة ---
-        const university = "جامعة السودان العالمية";
-        const collegeShort = (currentUserData.college === university) ? "SIU" : "COL"; // اختصار الكلية
-        
-        // إنشاء اسم الملف المطلوب: جامعة - طالب - اختصار كلية
-        const fileName = `${university} - ${currentUserData.fullName} - ${collegeShort}.pdf`;
-        
-        const week = "الأسبوع_الأول";
-        const storagePath = sRef(storage, `assignments/${week}/${fileName}`);
-        
-        const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
-
-        uploadTask.on('state_changed', 
-            (snapshot) => {
-                const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                toggleStatus(true, `جاري الرفع النهائي: ${progress}% 🚀`);
-                updateProgressBar(progress);
-            }, 
-            (error) => {
-                alert("فشل الرفع: " + error.message);
+                finalPdfBlob = doc.output('blob');
+                const pdfUrl = URL.createObjectURL(finalPdfBlob);
+                document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
+                document.getElementById('previewArea').classList.remove('hidden');
+                document.getElementById('viewFullPdf').onclick = () => window.open(pdfUrl);
+                
                 toggleStatus(false);
-            }, 
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                await set(ref(db, `submissions/${week}/${auth.currentUser.uid}`), {
-                    studentName: currentUserData.fullName,
-                    university: university,
-                    college: currentUserData.college,
-                    fileUrl: downloadURL,
-                    fileName: fileName,
-                    submittedAt: new Date().toLocaleString('ar-EG')
-                });
-                updateProgressBar(100);
-                toggleStatus(true, "✅ تم الرفع بنجاح! شكراً لك يا مهندس.");
-                setTimeout(() => { toggleStatus(false); updateProgressBar(0); }, 3000);
+            } catch (err) {
+                alert("خطأ أثناء المعالجة: " + err.message);
+                toggleStatus(false);
             }
-        );
-    };
+        };
+    }
+
+    // الرفع النهائي مع تسمية الملف المطلوبة (جامعة - طالب - اختصار)
+    const finalSubmit = document.getElementById('finalSubmit');
+    if (finalSubmit) {
+        finalSubmit.onclick = async () => {
+            if (!finalPdfBlob) return;
+
+            const university = "جامعة السودان العالمية";
+            const collegeShort = "SIU"; // يمكنك جعل هذا متغيراً بناءً على اختيار الكلية
+            const fileName = `${university} - ${currentUserData.fullName} - ${collegeShort}.pdf`;
+            
+            toggleStatus(true, "بدء الرفع... 🚀");
+            const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
+            const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
+
+            uploadTask.on('state_changed', 
+                (snapshot) => {
+                    const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
+                    toggleStatus(true, `جاري الرفع النهائي: ${progress}% 🚀`);
+                    updateProgressBar(progress);
+                }, 
+                (error) => { alert("فشل الرفع: " + error.message); toggleStatus(false); }, 
+                async () => {
+                    const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
+                    await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
+                        studentName: currentUserData.fullName,
+                        academicIndex: currentUserData.academicIndex,
+                        fileUrl: downloadURL,
+                        fileName: fileName,
+                        submittedAt: new Date().toLocaleString('ar-EG')
+                    });
+                    toggleStatus(true, "✅ تم الرفع بنجاح! شكراً يا مهندس.");
+                    setTimeout(() => toggleStatus(false), 3000);
+                }
+            );
+        };
+    }
 }
 
-// --- [دوال مساعدة] ---
+// --- [الجزء الثالث: لوحة تحكم الأدمن admin.html] ---
+if (page === "admin.html") {
+    onAuthStateChanged(auth, async (user) => {
+        const tableBody = document.getElementById('adminTableBody');
+        const totalText = document.getElementById('totalSubmissions');
+        
+        if (!user) { window.location.href = "index.html"; return; }
+
+        try {
+            const snapshot = await get(ref(db, 'submissions/week_1'));
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                tableBody.innerHTML = "";
+                let count = 0;
+                Object.keys(data).forEach(key => {
+                    count++;
+                    const sub = data[key];
+                    tableBody.innerHTML += `
+                        <tr class="border-b border-slate-50 hover:bg-slate-50">
+                            <td class="p-4 font-bold">${sub.studentName}</td>
+                            <td class="p-4 text-sm">${sub.academicIndex || '---'}</td>
+                            <td class="p-4 text-xs text-slate-400">${sub.submittedAt}</td>
+                            <td class="p-4">
+                                <a href="${sub.fileUrl}" target="_blank" class="bg-blue-600 text-white px-3 py-1 rounded-lg text-xs font-bold">تحميل</a>
+                            </td>
+                        </tr>`;
+                });
+                totalText.innerText = count;
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center">لا توجد تسليمات بعد</td></tr>`;
+            }
+        } catch (err) { console.error(err); }
+    });
+}
+
+// --- [دوال عامة مساعدة] ---
 function readFileAsDataURL(file) {
-    return new Promise((res) => {
+    return new Promise(res => {
         const reader = new FileReader();
-        reader.onload = (e) => res(e.target.result);
+        reader.onload = e => res(e.target.result);
         reader.readAsDataURL(file);
     });
 }
@@ -165,57 +238,7 @@ function toggleStatus(show, text = "") {
     }
 }
 
-window.handleLogout = () => { signOut(auth).then(() => location.replace("index.html")); };
-
-// --- [الجزء الثالث: لوحة تحكم الأدمن admin.html] ---
-if (page === "admin.html") {
-    // التأكد من أن المستخدم مسجل دخول (يمكنك لاحقاً إضافة شرط أنه "ليدر" فقط)
-    onAuthStateChanged(auth, async (user) => {
-        if (!user) {
-            window.location.href = "index.html";
-            return;
-        }
-
-        const tableBody = document.getElementById('adminTableBody');
-        const totalText = document.getElementById('totalSubmissions');
-
-        try {
-            // جلب بيانات التسليمات للأسبوع الأول
-            const submissionsRef = ref(db, 'submissions/week_1');
-            const snapshot = await get(submissionsRef);
-
-            if (snapshot.exists()) {
-                const data = snapshot.val();
-                tableBody.innerHTML = ""; // مسح نص التحميل
-                let count = 0;
-
-                // تحويل الكائن إلى مصفوفة وعرضها
-                Object.keys(data).forEach(key => {
-                    const submission = data[key];
-                    count++;
-                    
-                    const row = `
-                        <tr class="hover:bg-slate-50 transition-colors">
-                            <td class="p-4 font-bold text-slate-800">${submission.studentName || submission.name}</td>
-                            <td class="p-4 text-sm text-slate-500">${submission.academicIndex || submission.index}</td>
-                            <td class="p-4 text-xs text-slate-400">${submission.submittedAt || submission.time}</td>
-                            <td class="p-4">
-                                <a href="${submission.fileUrl}" target="_blank" 
-                                   class="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold hover:bg-blue-600 hover:text-white transition-all">
-                                   📄 فتح الملف
-                                </a>
-                            </td>
-                        </tr>
-                    `;
-                    tableBody.insertAdjacentHTML('beforeend', row);
-                });
-                totalText.innerText = count;
-            } else {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400">لا توجد تسليمات حتى الآن ⭕</td></tr>`;
-            }
-        } catch (err) {
-            console.error("خطأ في جلب البيانات:", err);
-            tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-red-500">حدث خطأ أثناء جلب البيانات</td></tr>`;
-        }
-    });
-}
+// جعل دالة الخروج متاحة عالمياً
+window.handleLogout = () => {
+    signOut(auth).then(() => window.location.href = "index.html");
+};
