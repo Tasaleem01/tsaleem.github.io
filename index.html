@@ -1,1 +1,77 @@
-الصفحة الرئيسية 
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>نظام تسليم التكليفات | هندسة الكهرباء</title>
+    
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; }
+    </style>
+</head>
+<body class="bg-gray-100 min-h-screen flex items-center justify-center p-4">
+
+    <div id="authOverlay" class="fixed inset-0 bg-blue-900/90 z-50 flex items-center justify-center p-4">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl w-full max-w-md text-center">
+            <h1 class="text-2xl font-bold text-gray-800 mb-4">مرحباً بك يا مهندس ⚡</h1>
+            <p class="text-gray-600 mb-8">يرجى تسجيل الدخول باستخدام حساب جوجل للوصول لنظام التسليم</p>
+            <button id="loginBtn" class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-200 py-3 rounded-xl hover:bg-gray-50 transition-all shadow-sm">
+                <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-6">
+                <span class="font-bold text-gray-700">الدخول عبر جوجل</span>
+            </button>
+        </div>
+    </div>
+
+    <div class="bg-white shadow-xl rounded-2xl p-6 w-full max-w-xl">
+        <div class="border-b pb-4 mb-6 flex justify-between items-center">
+            <h2 class="text-xl font-bold text-blue-600">تسليم التكليف الأسبوعي</h2>
+            <span id="userNameDisplay" class="text-sm text-gray-500"></span>
+        </div>
+
+        <form id="uploadForm" class="space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-bold mb-2">الاسم الرباعي</label>
+                    <input type="text" id="studentName" readonly class="w-full p-3 bg-gray-50 border rounded-lg outline-none text-gray-600 cursor-not-allowed">
+                </div>
+                <div>
+                    <label class="block text-sm font-bold mb-2">الرقم الجامعي</label>
+                    <input type="text" id="studentId" readonly class="w-full p-3 bg-gray-50 border rounded-lg outline-none text-gray-600 cursor-not-allowed">
+                </div>
+            </div>
+
+            <div>
+                <label class="block text-sm font-bold mb-2 text-blue-700">رقم الأسبوع / التكليف</label>
+                <select id="weekNumber" class="w-full p-3 border-2 border-blue-100 rounded-lg focus:border-blue-500 outline-none">
+                    <option value="1">الأسبوع الأول</option>
+                    <option value="2">الأسبوع الثاني</option>
+                    <option value="3">الأسبوع الثالث</option>
+                    <option value="4">الأسبوع الرابع</option>
+                </select>
+            </div>
+
+            <div class="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 transition-colors">
+                <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
+                <label for="imageInput" class="cursor-pointer">
+                    <div class="text-4xl mb-2">📸</div>
+                    <p class="text-blue-600 font-bold">اضغط هنا لاختيار صور الاختبار</p>
+                    <p class="text-xs text-gray-400 mt-1">يمكنك اختيار أكثر من صورة معاً</p>
+                </label>
+                <div id="fileCount" class="mt-4 text-sm font-bold text-green-600 hidden"></div>
+            </div>
+
+            <button type="submit" id="submitBtn" class="w-full bg-blue-600 text-white font-bold py-4 rounded-xl hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all">
+                تحويل الصور ورفع التكليف 🚀
+            </button>
+
+            <div id="status" class="hidden p-4 rounded-lg text-center text-sm font-bold transition-all"></div>
+        </form>
+    </div>
+
+    <script type="module" src="app.js"></script>
+</body>
+</html>
