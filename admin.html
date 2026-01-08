@@ -3,67 +3,89 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة الليدر | مراجعة التكليفات</title>
+    <title>لوحة تحكم الليدر | الإشراف</title>
+    
     <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+    
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; background-color: #f8fafc; }
+        body { font-family: 'Cairo', sans-serif; }
+        
+        /* تأثيرات التحميل وانتقال الجدول */
+        .fade-in { animation: fadeIn 0.5s ease-in; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        
+        .settings-btn:hover { transform: rotate(45deg); }
     </style>
 </head>
-<body>
+<body class="bg-slate-900 text-white min-h-screen p-4 md:p-8">
 
-    <header class="bg-slate-900 text-white p-6 shadow-2xl">
-        <div class="max-w-6xl mx-auto flex justify-between items-center">
-            <div>
-                <h1 class="text-2xl font-bold">لوحة تحكم الليدر 🛠️</h1>
-                <p class="text-slate-400 text-sm">متابعة تسليمات الأسبوع الأول - SIU</p>
+    <div class="max-w-6xl mx-auto fade-in">
+        <header class="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-slate-700 pb-6 gap-4">
+            <div class="flex items-center gap-4">
+                <h1 id="adminTitle" class="text-2xl md:text-3xl font-bold text-blue-400">لوحة تحكم الليدر ⚡</h1>
+                <button onclick="toggleSettings()" class="settings-btn text-2xl transition-transform duration-300 focus:outline-none" title="إعدادات الأسبوع والمادة">
+                    ⚙️
+                </button>
             </div>
-            <button onclick="handleLogout()" class="bg-slate-800 hover:bg-red-600 px-4 py-2 rounded-lg text-sm transition-all">خروج</button>
-        </div>
-    </header>
+            
+            <div class="flex gap-3">
+                <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl text-sm transition-all">تحديث البيانات 🔄</button>
+                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition-all">خروج</button>
+            </div>
+        </header>
 
-    <main class="max-w-6xl mx-auto p-4 mt-8">
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-slate-500 font-bold text-sm">إجمالي المسلمين</p>
-                <h3 id="totalSubmissions" class="text-3xl font-black text-blue-600 mt-2">0</h3>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
+            <div class="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 shadow-xl">
+                <p class="text-slate-400 text-sm mb-1">إجمالي المسجلين بالنظام</p>
+                <h3 id="totalStudents" class="text-4xl font-bold text-white">0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-slate-500 font-bold text-sm">الجامعة</p>
-                <h3 class="text-xl font-bold text-slate-800 mt-2">جامعة السودان العالمية</h3>
+            
+            <div class="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 shadow-xl">
+                <p class="text-slate-400 text-sm mb-1">تسليمات (الأسبوع الحالي)</p>
+                <h3 id="weekSubmissions" class="text-4xl font-bold text-emerald-400">0</h3>
             </div>
-            <div class="bg-white p-6 rounded-[2rem] shadow-sm border border-slate-100">
-                <p class="text-slate-500 font-bold text-sm">تحديث القائمة</p>
-                <button onclick="location.reload()" class="mt-2 text-emerald-600 font-bold flex items-center gap-2 hover:underline">
-                    🔄 تحديث البيانات الآن
+            
+            <div class="bg-blue-600 hover:bg-blue-700 p-2 rounded-[2rem] shadow-lg transition-all transform active:scale-95 group">
+                <button id="downloadZipBtn" class="w-full h-full flex flex-col items-center justify-center gap-1 text-white">
+                    <span class="text-3xl group-hover:bounce">📦</span>
+                    <span class="font-bold">تحميل الكل (ZIP)</span>
                 </button>
             </div>
         </div>
 
-        <div class="bg-white rounded-[2.5rem] shadow-sm border border-slate-100 overflow-hidden">
-            <div class="p-6 border-b border-slate-50">
-                <h3 class="text-lg font-bold text-slate-800">قائمة المهندسين (الأسبوع 1)</h3>
+        <div class="bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-700 shadow-2xl">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
+                <h2 class="font-bold text-lg">قائمة الطلاب المسلمين</h2>
+                <span class="text-xs bg-slate-700 px-3 py-1 rounded-full text-slate-300 italic" id="activeWeekLabel">الأسبوع: جاري التحميل...</span>
             </div>
+            
             <div class="overflow-x-auto">
                 <table class="w-full text-right">
-                    <thead class="bg-slate-50 text-slate-500 text-sm">
+                    <thead class="bg-slate-700/50 text-slate-400 text-sm">
                         <tr>
-                            <th class="p-4">المهندس</th>
-                            <th class="p-4">الرقم الأكاديمي</th>
-                            <th class="p-4">وقت التسليم</th>
-                            <th class="p-4">الملف</th>
+                            <th class="p-5 font-semibold">اسم المهندس</th>
+                            <th class="p-5 font-semibold">الرقم الجامعي</th>
+                            <th class="p-5 font-semibold">تاريخ ووقت التسليم</th>
+                            <th class="p-5 font-semibold text-center">الملف</th>
                         </tr>
                     </thead>
-                    <tbody id="adminTableBody" class="text-slate-700 divide-y divide-slate-50">
+                    <tbody id="adminTableBody" class="divide-y divide-slate-700">
                         <tr>
-                            <td colspan="4" class="p-10 text-center text-slate-400 italic">جاري جلب قائمة المسلمين...</td>
+                            <td colspan="4" class="p-10 text-center text-slate-500 italic">جاري جلب البيانات من السحابة...</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
-    </main>
 
-    <script type="module" src="main.js"></script>
+        <footer class="mt-8 text-center text-slate-500 text-xs">
+            منصة تسليم التكليفات الذكية &copy; 2026
+        </footer>
+    </div>
+
+    <script type="module" src="admin.js"></script>
 </body>
 </html>
