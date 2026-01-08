@@ -1,9 +1,8 @@
-// 1. استيراد المكتبات اللازمة (تأكد من استخدام نفس الإصدارات)
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, set, get, push } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// 2. إعداداتك التي استخرجتها (تأكد أنها مطابقة تماماً)
+// إعدادات Firebase الخاصة بك
 const firebaseConfig = {
   apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
   authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -14,61 +13,76 @@ const firebaseConfig = {
   appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
 };
 
-// 3. تهيئة Firebase
+// إعدادات Cloudinary
+const CLOUD_NAME = "dilxydgpn";
+const UPLOAD_PRESET = "student_uploads";
+
+// تهيئة الخدمات
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getDatabase(app);
 const provider = new GoogleAuthProvider();
 
-// --- الجزء المسؤول عن تشغيل الزر ---
+// --- التعامل مع واجهة المستخدم ---
 
 const loginBtn = document.getElementById('loginBtn');
 const authOverlay = document.getElementById('authOverlay');
+const uploadForm = document.getElementById('uploadForm');
+const statusDiv = document.getElementById('status');
 
-// وظيفة زر تسجيل الدخول
+// 1. تفعيل زر تسجيل الدخول
 loginBtn.addEventListener('click', async () => {
     try {
-        const result = await signInWithPopup(auth, provider);
-        const user = result.user;
-        console.log("تم تسجيل الدخول بنجاح:", user.displayName);
-        // هنا سيتولى مراقب الحالة (onAuthStateChanged) إخفاء الغطاء
+        await signInWithPopup(auth, provider);
     } catch (error) {
-        console.error("خطأ في تسجيل الدخول:", error.message);
-        alert("فشل تسجيل الدخول: " + error.message);
+        console.error("خطأ في الدخول:", error);
+        alert("حدث خطأ أثناء الاتصال بجوجل: " + error.message);
     }
 });
 
-// مراقبة حالة تسجيل الدخول (لتلقائية إخفاء الواجهة)
+// 2. مراقبة حالة المستخدم (هل هو مسجل دخول؟)
 onAuthStateChanged(auth, async (user) => {
     if (user) {
-        // إخفاء غطاء تسجيل الدخول
-        authOverlay.classList.add('hidden');
+        authOverlay.classList.add('hidden'); // إخفاء واجهة الدخول
         document.getElementById('userNameDisplay').innerText = `أهلاً، ${user.displayName}`;
         
-        // فحص هل هو مسجل مسبقاً في Realtime Database؟
+        // جلب بيانات الطالب من Realtime Database
         const userRef = ref(db, 'users/' + user.uid);
         const snapshot = await get(userRef);
         
         if (snapshot.exists()) {
-            const data = snapshot.val();
-            document.getElementById('studentName').value = data.fullName;
-            document.getElementById('studentId').value = data.academicId;
+            document.getElementById('studentName').value = snapshot.val().fullName;
+            document.getElementById('studentId').value = snapshot.val().academicId;
         } else {
-            // إذا كان أول مرة، اطلب البيانات واحفظها
+            // التسجيل لأول مرة
             const fullName = prompt("يرجى إدخال اسمك الرباعي:");
             const academicId = prompt("يرجى إدخال رقمك الجامعي:");
-            
             if (fullName && academicId) {
-                await set(userRef, {
-                    fullName: fullName,
-                    academicId: academicId,
-                    email: user.email
-                });
+                await set(userRef, { fullName, academicId, email: user.email });
                 document.getElementById('studentName').value = fullName;
                 document.getElementById('studentId').value = academicId;
             }
         }
     } else {
         authOverlay.classList.remove('hidden');
+    }
+});
+
+// 3. منطق الرفع (Cloudinary + Firebase)
+uploadForm.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const files = document.getElementById('imageInput').files;
+    if (files.length === 0) return alert("اختر الصور أولاً!");
+
+    statusDiv.classList.remove('hidden', 'bg-green-100', 'text-green-700');
+    statusDiv.classList.add('bg-blue-100', 'text-blue-700');
+    statusDiv.innerText = "جاري تحسين الصور ورفعها... ⏳";
+
+    try {
+        // هنا سنضع كود الرفع لـ Cloudinary وتحويل PDF في الخطوة التالية
+        // هل تريدني أن أكمل الجزء الخاص بـ PDF الآن؟
+        statusDiv.innerText = "تم الاتصال بنجاح، جاري تجهيز المعالج...";
+    } catch (err) {
+        statusDiv.innerText = "فشل الرفع: " + err.message;
     }
 });
