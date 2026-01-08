@@ -27,7 +27,7 @@
         <div class="text-8xl mb-6">🚫</div>
         <h1 class="text-3xl font-bold text-slate-800 mb-4">عفواً، أنت لست مسجلاً</h1>
         <p class="text-slate-500 mb-8 max-w-md">يجب إنشاء حساب أولاً لتتمكن من رفع التكليفات.</p>
-        <a href="register.html" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700">إنشاء حساب جديد</a>
+        <a href="register.html" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-700 transition-all active:scale-95">إنشاء حساب جديد</a>
     </div>
 
     <div id="mainContent" class="hidden">
@@ -36,17 +36,17 @@
                 <div>
                     <h2 class="text-lg font-bold text-slate-800">نرحب بك يا مهندس/ <span id="displayUserName" class="text-blue-600">...</span></h2>
                     <div class="flex gap-4 text-xs font-bold text-slate-400 mt-1">
-                        <span>ID: <span id="displayIndex" class="text-slate-600">indexnumber</span></span>
-                        <span>الكلية: <span id="displayCollege" class="text-slate-600">...</span></span>
+                        <span>ID: <span id="displayIndex" class="text-slate-600 italic">indexnumber</span></span>
+                        <span>الكلية: <span id="displayCollege" class="text-slate-600 italic">...</span></span>
                     </div>
                 </div>
-                <button id="logoutBtn" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-xs font-bold">خروج</button>
+                <button onclick="handleLogout()" class="bg-red-50 text-red-500 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-100 transition-colors">خروج</button>
             </div>
         </header>
 
         <main class="max-w-3xl mx-auto p-4 mt-8">
             <div class="bg-white rounded-[2.5rem] p-8 shadow-sm border border-slate-100">
-                <h3 class="text-xl font-bold text-slate-800 mb-8">📂 رفع تكليف الأسبوع</h3>
+                <h3 class="text-xl font-bold text-slate-800 mb-8 flex items-center gap-2">📂 رفع تكليف الأسبوع</h3>
 
                 <div id="dropZone" onclick="document.getElementById('imageInput').click()" class="border-2 border-dashed border-slate-200 rounded-[2rem] p-12 text-center hover:border-blue-400 hover:bg-blue-50 cursor-pointer transition-all group">
                     <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
@@ -55,14 +55,20 @@
                     <div id="fileStatus" class="mt-4 inline-block px-4 py-1 bg-green-100 text-green-700 rounded-full text-xs font-bold hidden"></div>
                 </div>
 
-                <button id="convertBtn" class="w-full mt-8 bg-slate-800 text-white py-5 rounded-2xl font-bold text-lg hover:bg-slate-900 shadow-lg transition-all">
+                <button id="convertBtn" class="w-full mt-8 bg-slate-800 text-white py-5 rounded-2xl font-bold text-lg hover:bg-slate-900 shadow-lg transition-all active:scale-[0.98]">
                     تحويل الصور ومعاينة الـ PDF 📄
                 </button>
 
                 <div id="previewArea" class="hidden mt-10 space-y-4">
-                    <h4 class="font-bold text-slate-800">👁️ معاينة الملف:</h4>
-                    <div id="pdfFrame" class="w-full h-[500px] bg-slate-100 rounded-[2rem] overflow-hidden border-2 shadow-inner"></div>
-                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl hover:bg-emerald-700 transition-all">
+                    <div class="flex items-center justify-between px-2">
+                        <h4 class="font-bold text-slate-800">👁️ معاينة الملف النهائي:</h4>
+                        <button id="viewFullPdf" class="text-blue-600 text-sm font-bold hover:underline flex items-center gap-1">
+                            🔍 معاينة بوضوح
+                        </button>
+                    </div>
+                    <div id="pdfFrame" class="w-full h-[500px] bg-slate-100 rounded-[2rem] overflow-hidden border-2 shadow-inner">
+                        </div>
+                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-2xl font-bold text-lg shadow-xl hover:bg-emerald-700 transition-all active:scale-[0.98]">
                         إرسال الملف النهائي لليدر 🚀
                     </button>
                 </div>
@@ -71,157 +77,12 @@
     </div>
 
     <div id="statusOverlay" class="hidden fixed inset-0 bg-slate-900/80 backdrop-blur-md z-[200] flex items-center justify-center p-6 text-center">
-        <div class="bg-white p-10 rounded-[3rem] max-w-sm w-full">
+        <div class="bg-white p-10 rounded-[3rem] max-w-sm w-full shadow-2xl">
             <div class="spinner mx-auto mb-6"></div>
-            <p id="statusText" class="text-lg font-bold text-slate-800">جاري المعالجة...</p>
+            <p id="statusText" class="text-lg font-bold text-slate-800 leading-relaxed italic">جاري المعالجة...</p>
         </div>
     </div>
 
-    <script type="module">
-        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-        import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-        import { getDatabase, ref, get, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-        import { getStorage, ref as sRef, uploadBytes, getDownloadURL } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js";
-
-        // --- ضع مفاتيحك هنا ---
-        const firebaseConfig = {
-            apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
-            authDomain: "tasaleem-c2218.firebaseapp.com",
-            databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
-            projectId: "tasaleem-c2218",
-            storageBucket: "tasaleem-c2218.firebasestorage.app",
-            messagingSenderId: "877790432223",
-            appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
-        };
-
-        const CLOUD_NAME = "dilxydgpn";
-        const UPLOAD_PRESET = "student_upload";
-
-        const app = initializeApp(firebaseConfig);
-        const auth = getAuth(app);
-        const db = getDatabase(app);
-        const storage = getStorage(app);
-
-        let currentUserData = null;
-        let finalPdfBlob = null;
-
-        // دالة التحقق من المستخدم عند تحميل الصفحة
-        onAuthStateChanged(auth, async (user) => {
-            const loader = document.getElementById('initialLoader');
-            const main = document.getElementById('mainContent');
-            const denied = document.getElementById('accessDenied');
-
-            if (user) {
-                try {
-                    const snap = await get(ref(db, 'users/' + user.uid));
-                    if (snap.exists()) {
-                        currentUserData = snap.val();
-                        document.getElementById('displayUserName').innerText = currentUserData.fullName;
-                        document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
-                        document.getElementById('displayCollege').innerText = currentUserData.college;
-                        
-                        main.classList.remove('hidden');
-                    } else {
-                        denied.classList.remove('hidden');
-                    }
-                } catch (e) {
-                    denied.classList.remove('hidden');
-                }
-            } else {
-                denied.classList.remove('hidden');
-            }
-            loader.style.opacity = '0';
-            setTimeout(() => loader.classList.add('hidden'), 500);
-        });
-
-        // منطق اختيار الصور والتحويل (كما في الأكواد السابقة)
-        document.getElementById('imageInput').onchange = (e) => {
-            const count = e.target.files.length;
-            if (count > 0) {
-                const status = document.getElementById('fileStatus');
-                status.innerText = `تم اختيار ${count} صور`;
-                status.classList.remove('hidden');
-            }
-        };
-
-        document.getElementById('convertBtn').onclick = async () => {
-            const files = Array.from(document.getElementById('imageInput').files);
-            if (files.length === 0) return alert("اختر صوراً أولاً!");
-            toggleStatus(true, "جاري تحسين الصور ورفعها... ⏳");
-
-            try {
-                const urls = [];
-                for (let file of files) {
-                    const fd = new FormData();
-                    fd.append("file", file);
-                    fd.append("upload_preset", UPLOAD_PRESET);
-                    const res = await fetch(`https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`, { method: "POST", body: fd });
-                    const data = await res.json();
-                    urls.push(data.secure_url);
-                }
-
-                toggleStatus(true, "جاري إنشاء الـ PDF... 📄");
-                const { jsPDF } = window.jspdf;
-                const doc = new jsPDF();
-                for (let i = 0; i < urls.length; i++) {
-                    if (i > 0) doc.addPage();
-                    const img = await getBase64(urls[i]);
-                    doc.addImage(img, 'JPEG', 10, 10, 190, 280);
-                }
-
-                finalPdfBlob = doc.output('blob');
-                const pdfUrl = URL.createObjectURL(finalPdfBlob);
-                document.getElementById('pdfFrame').innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
-                document.getElementById('previewArea').classList.remove('hidden');
-                toggleStatus(false);
-            } catch (err) {
-                alert("حدث خطأ: " + err.message);
-                toggleStatus(false);
-            }
-        };
-
-        document.getElementById('finalSubmit').onclick = async () => {
-            if (!finalPdfBlob) return;
-            toggleStatus(true, "جاري الرفع النهائي لليدر... لا تغلق الصفحة 🚀");
-            try {
-                const fileName = `${currentUserData.academicIndex}_${currentUserData.fullName}.pdf`;
-                const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
-                await uploadBytes(storagePath, finalPdfBlob);
-                const downloadURL = await getDownloadURL(storagePath);
-
-                await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
-                    studentName: currentUserData.fullName,
-                    index: currentUserData.academicIndex,
-                    fileUrl: downloadURL,
-                    college: currentUserData.college,
-                    submittedAt: new Date().toLocaleString('ar-EG')
-                });
-
-                toggleStatus(true, "تم الرفع بنجاح! يمكنك الخروج ✅");
-                setTimeout(() => toggleStatus(false), 3000);
-            } catch (err) {
-                alert("فشل الرفع: " + err.message);
-                toggleStatus(false);
-            }
-        };
-
-        async function getBase64(url) {
-            const r = await fetch(url);
-            const b = await r.blob();
-            return new Promise(res => {
-                const f = new FileReader();
-                f.onload = () => res(f.result);
-                f.readAsDataURL(b);
-            });
-        }
-
-        function toggleStatus(show, text = "") {
-            const overlay = document.getElementById('statusOverlay');
-            document.getElementById('statusText').innerText = text;
-            show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden');
-        }
-
-        document.getElementById('logoutBtn').onclick = () => signOut(auth).then(() => location.reload());
-    </script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
