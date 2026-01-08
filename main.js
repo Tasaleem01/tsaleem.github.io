@@ -166,3 +166,56 @@ function toggleStatus(show, text = "") {
 }
 
 window.handleLogout = () => { signOut(auth).then(() => location.replace("index.html")); };
+
+// --- [الجزء الثالث: لوحة تحكم الأدمن admin.html] ---
+if (page === "admin.html") {
+    // التأكد من أن المستخدم مسجل دخول (يمكنك لاحقاً إضافة شرط أنه "ليدر" فقط)
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) {
+            window.location.href = "index.html";
+            return;
+        }
+
+        const tableBody = document.getElementById('adminTableBody');
+        const totalText = document.getElementById('totalSubmissions');
+
+        try {
+            // جلب بيانات التسليمات للأسبوع الأول
+            const submissionsRef = ref(db, 'submissions/week_1');
+            const snapshot = await get(submissionsRef);
+
+            if (snapshot.exists()) {
+                const data = snapshot.val();
+                tableBody.innerHTML = ""; // مسح نص التحميل
+                let count = 0;
+
+                // تحويل الكائن إلى مصفوفة وعرضها
+                Object.keys(data).forEach(key => {
+                    const submission = data[key];
+                    count++;
+                    
+                    const row = `
+                        <tr class="hover:bg-slate-50 transition-colors">
+                            <td class="p-4 font-bold text-slate-800">${submission.studentName || submission.name}</td>
+                            <td class="p-4 text-sm text-slate-500">${submission.academicIndex || submission.index}</td>
+                            <td class="p-4 text-xs text-slate-400">${submission.submittedAt || submission.time}</td>
+                            <td class="p-4">
+                                <a href="${submission.fileUrl}" target="_blank" 
+                                   class="inline-flex items-center gap-2 bg-blue-50 text-blue-600 px-3 py-1 rounded-full text-xs font-bold hover:bg-blue-600 hover:text-white transition-all">
+                                   📄 فتح الملف
+                                </a>
+                            </td>
+                        </tr>
+                    `;
+                    tableBody.insertAdjacentHTML('beforeend', row);
+                });
+                totalText.innerText = count;
+            } else {
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-400">لا توجد تسليمات حتى الآن ⭕</td></tr>`;
+            }
+        } catch (err) {
+            console.error("خطأ في جلب البيانات:", err);
+            tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-red-500">حدث خطأ أثناء جلب البيانات</td></tr>`;
+        }
+    });
+}
