@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تسجيل الدخول | نظام التسليم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style> @import url('https://fonts.googleapis.com/css2?family=Cairo&display=swap'); body { font-family: 'Cairo', sans-serif; } </style>
+</head>
+<body class="bg-slate-100 h-screen flex items-center justify-center p-4">
+    <div class="bg-white p-8 rounded-3xl shadow-xl w-full max-w-md text-center">
+        <h2 class="text-2xl font-bold mb-6 text-slate-800">مرحباً بك يا مهندس ⚡</h2>
+        
+        <div id="loading" class="hidden mb-4 text-blue-600 font-bold italic">جاري التحقق من الحساب...</div>
+
+        <button id="loginBtn" class="w-full flex items-center justify-center gap-3 bg-white border-2 border-gray-100 py-3 rounded-2xl hover:bg-gray-50 transition-all mb-4">
+            <img src="https://www.gstatic.com/firebasejs/ui/2.0.0/images/action/google.svg" class="w-6">
+            <span class="font-bold">الدخول عبر جوجل</span>
+        </button>
+
+        <div id="registrationForm" class="hidden space-y-4 border-t pt-6 mt-6">
+            <p class="text-sm text-red-500 font-bold italic">يبدو أنك تدخل لأول مرة، يرجى ملء البيانات:</p>
+            <input type="text" id="regName" placeholder="الاسم الرباعي" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+            <input type="text" id="regId" placeholder="الرقم الجامعي" class="w-full p-3 border rounded-xl outline-none focus:ring-2 focus:ring-blue-500">
+            <button id="saveBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold">إتمام التسجيل والدخول</button>
+        </div>
+    </div>
+
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
+        import { getAuth, GoogleAuthProvider, signInWithPopup, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+        import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+
+        const firebaseConfig = {
+            apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
+            authDomain: "tasaleem-c2218.firebaseapp.com",
+            databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
+            projectId: "tasaleem-c2218",
+            storageBucket: "tasaleem-c2218.firebasestorage.app",
+            messagingSenderId: "877790432223",
+            appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getDatabase(app);
+        const provider = new GoogleAuthProvider();
+
+        // فحص حالة الطالب
+        onAuthStateChanged(auth, async (user) => {
+            if (user) {
+                const userRef = ref(db, 'users/' + user.uid);
+                const snap = await get(userRef);
+                if (snap.exists()) {
+                    window.location.href = "index.html"; // محول مسبقاً -> اذهب لصفحة الرفع
+                } else {
+                    document.getElementById('registrationForm').classList.remove('hidden');
+                    document.getElementById('loginBtn').classList.add('hidden');
+                }
+            }
+        });
+
+        // زر الدخول
+        document.getElementById('loginBtn').onclick = () => signInWithPopup(auth, provider);
+
+        // حفظ بيانات الطالب الجديد
+        document.getElementById('saveBtn').onclick = async () => {
+            const name = document.getElementById('regName').value;
+            const id = document.getElementById('regId').value;
+            if (name && id) {
+                await set(ref(db, 'users/' + auth.currentUser.uid), { fullName: name, academicId: id });
+                window.location.href = "index.html";
+            } else {
+                alert("يرجى ملء كافة البيانات");
+            }
+        };
+    </script>
+</body>
+</html>
