@@ -23,7 +23,7 @@ let currentUserData = null;
 let finalPdfBlob = null;
 const page = window.location.pathname.split("/").pop();
 
-// --- منطق صفحة التسجيل ---
+// --- [الجزء الأول: صفحة التسجيل] ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
     if (regForm) {
@@ -42,15 +42,16 @@ if (page === "register.html") {
                 await set(ref(db, 'users/' + userCred.user.uid), {
                     fullName: name, academicIndex: index, college: college, email: email
                 });
-                alert("تم التسجيل بنجاح! فعل حسابك من الإيميل.");
+                alert("تم التسجيل! فعل حسابك من الإيميل ثم سجل دخولك.");
                 window.location.href = "index.html";
             } catch (err) { alert(err.message); }
         };
     }
 }
 
-// --- منطق الصفحة الرئيسية ---
+// --- [الجزء الثاني: الصفحة الرئيسية] ---
 if (page === "" || page === "index.html") {
+    // التحقق من حالة الدخول
     onAuthStateChanged(auth, async (user) => {
         const loader = document.getElementById('initialLoader');
         if (user) {
@@ -66,12 +67,13 @@ if (page === "" || page === "index.html") {
         if (loader) { loader.style.opacity = '0'; setTimeout(() => loader.classList.add('hidden'), 500); }
     });
 
-    // تحويل الصور لـ PDF (ضغط الملف داخلياً)
+    // تحويل الصور ومعالجتها
     document.getElementById('convertBtn').onclick = async () => {
         const files = Array.from(document.getElementById('imageInput').files);
-        if (files.length === 0) return alert("اختر صوراً أولاً");
+        if (files.length === 0) return alert("يرجى اختيار الصور أولاً");
 
-        toggleStatus(true, "جاري ضغط ومعالجة الصور... ⏳");
+        toggleStatus(true, "جاري تحويل ومعالجة الصور... ⏳");
+        updateProgressBar(0); // تصغير الشريط للصفر عند البدء
 
         try {
             const { jsPDF } = window.jspdf;
@@ -86,7 +88,7 @@ if (page === "" || page === "index.html") {
                 const ratio = imgProps.width / imgProps.height;
                 const pdfImgHeight = pageWidth / ratio;
                 
-                // إضافة الصورة مع ضغط متوسط للحفاظ على سرعة الرفع دون التأثير على العين
+                // ضغط ذكي 'MEDIUM' للحفاظ على الجودة وسرعة الرفع
                 doc.addImage(imgData, 'JPEG', 0, 0, pageWidth, pdfImgHeight > pageHeight ? pageHeight : pdfImgHeight, undefined, 'MEDIUM');
             }
 
@@ -101,49 +103,54 @@ if (page === "" || page === "index.html") {
         } catch (err) { alert(err.message); toggleStatus(false); }
     };
 
-    // الرفع النهائي مع نسبة مئوية (ProgressBar Logic)
+    // الرفع النهائي مع النسبة المئوية الحقيقية
     document.getElementById('finalSubmit').onclick = async () => {
         if (!finalPdfBlob) return;
         
+        const week = "الأسبوع_الأول";
         const fileName = `${currentUserData.academicIndex}_${currentUserData.fullName}.pdf`;
-        const storagePath = sRef(storage, `assignments/week_1/${fileName}`);
+        const storagePath = sRef(storage, `assignments/${week}/${fileName}`);
         
-        // استخدام uploadBytesResumable للمراقبة
         const uploadTask = uploadBytesResumable(storagePath, finalPdfBlob);
 
         uploadTask.on('state_changed', 
             (snapshot) => {
-                // حساب النسبة المئوية
                 const progress = Math.round((snapshot.bytesTransferred / snapshot.totalBytes) * 100);
-                toggleStatus(true, `جاري الرفع للسحابة: ${progress}% 🚀`);
+                toggleStatus(true, `جاري الرفع النهائي: ${progress}% 🚀`);
+                updateProgressBar(progress); // تحديث شريط التحميل البصري
             }, 
             (error) => {
                 alert("فشل الرفع: " + error.message);
                 toggleStatus(false);
             }, 
             async () => {
-                // عند اكتمال الرفع بنجاح
                 const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                await set(ref(db, `submissions/week_1/${auth.currentUser.uid}`), {
-                    name: currentUserData.fullName,
-                    index: currentUserData.academicIndex,
+                await set(ref(db, `submissions/${week}/${auth.currentUser.uid}`), {
+                    studentName: currentUserData.fullName,
+                    academicIndex: currentUserData.academicIndex,
                     fileUrl: downloadURL,
-                    time: new Date().toLocaleString('ar-EG')
+                    submittedAt: new Date().toLocaleString('ar-EG')
                 });
-                toggleStatus(true, "تم الرفع بنجاح! شكراً يا مهندس ✅");
-                setTimeout(() => toggleStatus(false), 3000);
+                updateProgressBar(100);
+                toggleStatus(true, "✅ تم الرفع بنجاح! شكراً لك يا مهندس.");
+                setTimeout(() => { toggleStatus(false); updateProgressBar(0); }, 3000);
             }
         );
     };
 }
 
-// دوال مساعدة
+// --- [دوال مساعدة] ---
 function readFileAsDataURL(file) {
     return new Promise((res) => {
         const reader = new FileReader();
         reader.onload = (e) => res(e.target.result);
         reader.readAsDataURL(file);
     });
+}
+
+function updateProgressBar(percent) {
+    const bar = document.getElementById('progressBar');
+    if (bar) bar.style.width = percent + "%";
 }
 
 function toggleStatus(show, text = "") {
@@ -155,4 +162,4 @@ function toggleStatus(show, text = "") {
     }
 }
 
-window.handleLogout = () => { signOut(auth).then(() => location.reload()); };
+window.handleLogout = () => { signOut(auth).then(() => location.replace("index.html")); };
