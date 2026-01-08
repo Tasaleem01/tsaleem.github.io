@@ -3,96 +3,48 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تسليم التكليفات | مهندس</title>
+    <title>إنشاء حساب | منصة التسليم</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-    <style>
-        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; background: #f8fafc; }
-        .glass { background: rgba(255, 255, 255, 0.95); backdrop-filter: blur(10px); }
-        .step-inactive { opacity: 0.5; pointer-events: none; }
-    </style>
+    <style> @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;700&display=swap'); body { font-family: 'Cairo', sans-serif; } </style>
 </head>
-<body class="min-h-screen pb-10">
-
-    <nav class="glass sticky top-0 z-40 border-b border-slate-200 px-6 py-4 mb-8">
-        <div class="max-w-5xl mx-auto flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <div class="bg-blue-600 p-2 rounded-lg text-white font-bold italic text-xl">E</div>
-                <h1 class="text-xl font-bold text-slate-800 tracking-tight">منصة التسليم الهندسية</h1>
-            </div>
-            <div class="flex items-center gap-4">
-                <span id="welcomeMsg" class="hidden md:block text-slate-600 font-medium"></span>
-                <button id="logoutBtn" class="text-sm font-bold text-red-500 hover:text-red-700 transition-colors">خروج</button>
-            </div>
-        </div>
-    </nav>
-
-    <main class="max-w-4xl mx-auto px-4">
+<body class="bg-slate-100 flex items-center justify-center p-4 min-h-screen">
+    <div class="bg-white p-8 rounded-[2.5rem] shadow-2xl w-full max-w-lg">
+        <h2 class="text-2xl font-bold text-center mb-8 text-slate-800">إنشاء حساب مهندس جديد</h2>
         
-        <div class="mb-8 p-6 bg-gradient-to-r from-blue-600 to-indigo-700 rounded-3xl text-white shadow-xl">
-            <h2 class="text-2xl font-bold mb-2">مرحباً بك مجدداً يا مهندس! ⚡</h2>
-            <p class="opacity-90">جاهز لتسليم تكليف الأسبوع؟ تأكد من وضوح الصور قبل التحويل.</p>
-        </div>
+        <form id="regForm" class="space-y-4">
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الاسم الثلاثي على الأقل</label>
+                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
 
-        <div class="grid gap-8">
-            
-            <section class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100">
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="w-8 h-8 rounded-full bg-blue-100 text-blue-600 flex items-center justify-center font-bold text-sm">1</span>
-                    <h3 class="font-bold text-lg text-slate-800">تجهيز الصور</h3>
-                </div>
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الرقم الجامعي / Index</label>
+                <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
 
-                <div class="grid md:grid-cols-2 gap-4 mb-6">
-                    <div>
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2 mr-1">رقم الأسبوع</label>
-                        <select id="weekNumber" class="w-full p-3 bg-slate-50 border border-slate-200 rounded-xl focus:ring-2 focus:ring-blue-500 outline-none transition-all">
-                            <option value="1">الأسبوع 01</option>
-                            <option value="2">الأسبوع 02</option>
-                            <option value="3">الأسبوع 03</option>
-                            <option value="4">الأسبوع 04</option>
-                        </select>
-                    </div>
-                    <div class="opacity-60 cursor-not-allowed">
-                        <label class="block text-xs font-bold text-slate-500 uppercase mb-2 mr-1">الرقم الجامعي (تلقائي)</label>
-                        <input type="text" id="studentId" readonly class="w-full p-3 bg-slate-100 border border-slate-200 rounded-xl outline-none">
-                        <input type="hidden" id="studentName">
-                    </div>
-                </div>
+            <div>
+                <label class="block text-sm font-bold mb-1 mr-2">الجامعة والتخصص</label>
+                <select id="regCollege" class="w-full p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                    <option value="السودان العالمية_كهرباء">السودان العالمية - هندسة كهرباء</option>
+                    <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
+                    <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
+                    <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
+                    <option value="الحياة_طبية">كلية الحياة - هندسة طبية</option>
+                    <option value="الحياة_كهرباء">كلية الحياة - هندسة كهرباء</option>
+                    <option value="الحياة_اتصالات">كلية الحياة - اتصالات</option>
+                </select>
+            </div>
 
-                <div id="dropZone" class="border-2 border-dashed border-blue-200 rounded-3xl p-10 text-center hover:border-blue-400 hover:bg-blue-50/50 transition-all cursor-pointer group">
-                    <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
-                    <div class="text-5xl mb-4 group-hover:scale-110 transition-transform">📸</div>
-                    <p class="text-slate-700 font-bold text-lg">ارفع صور التكليف</p>
-                    <p class="text-slate-400 text-sm mt-2">يمكنك اختيار عدة صور (JPEG, PNG)</p>
-                    <div id="fileStatus" class="mt-4 inline-block px-4 py-1 bg-blue-100 text-blue-700 rounded-full text-xs font-bold hidden"></div>
-                </div>
+            <div class="grid grid-cols-2 gap-3">
+                <input type="password" id="regPass" placeholder="كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="p-3 border-2 border-slate-100 rounded-2xl outline-none focus:border-blue-500">
+            </div>
 
-                <button id="processBtn" class="w-full mt-6 bg-slate-800 text-white font-bold py-4 rounded-2xl hover:bg-slate-900 shadow-lg active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                    تحويل إلى PDF ومعاينة 📄
-                </button>
-            </section>
+            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold hover:bg-slate-900 transition-all shadow-lg">إنشاء الحساب وتوثيقه 📧</button>
+            <div id="regMessage" class="hidden text-center font-bold p-3 rounded-xl mt-4"></div>
+        </form>
+    </div>
 
-            <section id="previewSection" class="bg-white rounded-3xl p-6 shadow-sm border border-slate-100 step-inactive">
-                <div class="flex items-center gap-3 mb-6">
-                    <span class="w-8 h-8 rounded-full bg-emerald-100 text-emerald-600 flex items-center justify-center font-bold text-sm">2</span>
-                    <h3 class="font-bold text-lg text-slate-800">مراجعة الملف النهائي</h3>
-                </div>
-
-                <div id="pdfPreviewContainer" class="w-full h-96 bg-slate-100 rounded-2xl mb-6 flex items-center justify-center overflow-hidden border border-slate-200">
-                    <p class="text-slate-400 italic">قم بالتحويل أولاً لتظهر المعاينة هنا</p>
-                    </div>
-
-                <button id="submitBtn" class="w-full bg-emerald-600 text-white font-bold py-4 rounded-2xl hover:bg-emerald-700 shadow-xl shadow-emerald-100 active:scale-[0.98] transition-all flex items-center justify-center gap-2">
-                    اعتماد وإرسال التكليف لليدر 🚀
-                </button>
-            </section>
-
-        </div>
-
-        <div id="globalStatus" class="fixed bottom-6 left-1/2 -translate-x-1/2 px-6 py-3 rounded-full shadow-2xl text-white font-bold hidden z-50"></div>
-    </main>
-
-    <script type="module" src="app.js"></script>
+    <script type="module" src="register.js"></script>
 </body>
 </html>
