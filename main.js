@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, get, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // --- 1. إعدادات الخدمات ---
 const firebaseConfig = {
@@ -25,9 +25,10 @@ let currentUserData = null;
 let finalPdfBlob = null;
 let currentWeek = "week_1"; 
 let currentSubject = "الكهرباء";
+let allSubmissions = []; // لتخزين البيانات لغرض البحث
 const page = window.location.pathname.split("/").pop() || "index.html";
 
-// --- 2. منطق الحسابات ---
+// --- 2. منطق الحسابات (تسجيل ودخول) ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
     if (regForm) {
@@ -63,7 +64,7 @@ if (page === "login.html") {
     }
 }
 
-// --- 3. صفحة الطالب ---
+// --- 3. صفحة الطالب (index.html) ---
 if (page === "index.html" || page === "") {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -81,12 +82,13 @@ if (page === "index.html" || page === "") {
         if (document.getElementById('initialLoader')) document.getElementById('initialLoader').classList.add('hidden');
     });
 
+    // منطق تحويل الصور لـ PDF (موجود مسبقاً)
     const convertBtn = document.getElementById('convertBtn');
     if (convertBtn) {
         convertBtn.onclick = async () => {
             const files = Array.from(document.getElementById('imageInput').files);
             if (files.length === 0) return alert("اختر الصور أولاً");
-            toggleStatus(true, "جاري تحويل الصور... ⏳");
+            toggleStatus(true, "جاري تحويل الصور إلى PDF... ⏳");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             for (let i = 0; i < files.length; i++) {
@@ -107,7 +109,7 @@ if (page === "index.html" || page === "") {
     const finalSubmit = document.getElementById('finalSubmit');
     if (finalSubmit) {
         finalSubmit.onclick = async () => {
-            if (!finalPdfBlob) return alert("يرجى معالجة الصور أولاً");
+            if (!finalPdfBlob) return;
             const now = new Date();
             const dateStr = `${now.getDate()}-${now.getMonth() + 1}`;
             const fileName = `${currentUserData.fullName.replace(/\s+/g, '-')}-${dateStr}`;
@@ -123,12 +125,13 @@ if (page === "index.html" || page === "") {
                 const data = await res.json();
                 if (data.secure_url) {
                     await set(ref(db, `submissions/${currentWeek}/${auth.currentUser.uid}`), {
+                        userId: auth.currentUser.uid, // أضفنا هذا لتسهيل الحذف
                         studentName: currentUserData.fullName,
                         academicIndex: currentUserData.academicIndex,
                         fileUrl: data.secure_url,
                         submittedAt: new Date().toLocaleString('ar-EG')
                     });
-                    toggleStatus(true, "✅ تم التسليم!");
+                    toggleStatus(true, "✅ تم التسليم بنجاح!");
                     setTimeout(() => toggleStatus(false), 3000);
                 }
             } catch (e) { alert("خطأ: " + e.message); toggleStatus(false); }
@@ -147,7 +150,7 @@ if (page === "admin.html") {
                     currentWeek = settings.activeWeek;
                     currentSubject = settings.subjectName;
                     document.getElementById('adminTitle').innerText = `لوحة تحكم | ${currentSubject}`;
-                    document.getElementById('activeWeekLabel').innerText = `الأسبوع: ${currentWeek}`;
+                    document.getElementById('activeWeekLabel').innerText = `الأسبوع الحالي: ${currentWeek}`;
                     loadSubmissions();
                 }
             });
@@ -159,90 +162,83 @@ if (page === "admin.html") {
 
     function loadSubmissions() {
         onValue(ref(db, `submissions/${currentWeek}`), (snap) => {
-            const tableBody = document.getElementById('adminTableBody');
-            tableBody.innerHTML = "";
-            if (snap.exists()) {
-                const subs = Object.values(snap.val());
-                document.getElementById('weekSubmissions').innerText = subs.length;
-                subs.forEach(sub => {
-                    tableBody.innerHTML += `
-                        <tr class="border-b border-slate-700">
-                            <td class="p-4 font-bold">${sub.studentName}</td>
-                            <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
-                            <td class="p-4 text-xs">${sub.submittedAt}</td>
-                            <td class="p-4"><a href="${sub.fileUrl}" target="_blank" class="text-green-400 font-bold underline">فتح PDF</a></td>
-                        </tr>`;
-                });
-            } else {
-                document.getElementById('weekSubmissions').innerText = "0";
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center">لا توجد تسليمات</td></tr>`;
-            }
+            allSubmissions = snap.exists() ? Object.entries(snap.val()) : [];
+            renderTable(allSubmissions);
         });
     }
 
+    function renderTable(dataArray) {
+        const tableBody = document.getElementById('adminTableBody');
+        tableBody.innerHTML = "";
+        document.getElementById('weekSubmissions').innerText = dataArray.length;
+
+        dataArray.forEach(([key, sub]) => {
+            tableBody.innerHTML += `
+                <tr class="border-b border-slate-700 hover:bg-slate-800/50 transition-colors">
+                    <td class="p-4 font-bold">${sub.studentName}</td>
+                    <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
+                    <td class="p-4 text-[10px] text-slate-400">${sub.submittedAt}</td>
+                    <td class="p-4 flex gap-2 justify-center">
+                        <a href="${sub.fileUrl}" target="_blank" class="bg-emerald-500/20 text-emerald-400 px-3 py-1 rounded-lg text-xs font-bold">📂 فتح</a>
+                        <button onclick="deleteSubmission('${key}')" class="bg-red-500/20 text-red-500 px-3 py-1 rounded-lg text-xs font-bold hover:bg-red-500 hover:text-white transition-all">🗑️ حذف</button>
+                    </td>
+                </tr>`;
+        });
+        if (dataArray.length === 0) {
+            tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-500 italic">لا توجد نتائج مطابقة</td></tr>`;
+        }
+    }
+
+    // ميزة البحث
+    window.handleSearch = (query) => {
+        const filtered = allSubmissions.filter(([key, sub]) => 
+            sub.studentName.includes(query) || sub.academicIndex.includes(query)
+        );
+        renderTable(filtered);
+    };
+
+    // ميزة الحذف
+    window.deleteSubmission = (userId) => {
+        if (confirm("هل أنت متأكد من حذف هذا التسليم نهائياً؟")) {
+            remove(ref(db, `submissions/${currentWeek}/${userId}`))
+                .then(() => alert("تم الحذف بنجاح"))
+                .catch((e) => alert("خطأ في الحذف: " + e.message));
+        }
+    };
+
     window.toggleSettings = () => {
         const newSubject = prompt("اسم المادة:", currentSubject);
-        const newWeek = prompt("رمز الأسبوع:", currentWeek);
+        const newWeek = prompt("رمز الأسبوع (مثال: week_2):", currentWeek);
         if (newSubject && newWeek) {
             set(ref(db, 'admin_settings'), { activeWeek: newWeek, subjectName: newSubject });
         }
     };
     
-    // الجزء المعدل لحل مشكلة المجلد الفارغ (CORS Fix)
     document.getElementById('downloadZipBtn').onclick = async () => {
-        const subSnap = await get(ref(db, `submissions/${currentWeek}`));
-        if (!subSnap.exists()) return alert("لا توجد ملفات");
-        
+        if (allSubmissions.length === 0) return alert("لا توجد ملفات");
         const btn = document.getElementById('downloadZipBtn');
         const originalText = btn.innerHTML;
         btn.innerHTML = "جاري تجميع الملفات... ⏳";
         btn.disabled = true;
 
         const zip = new JSZip();
-        const folder = zip.folder(`Assignments-${currentWeek}`);
-        const subs = Object.values(subSnap.val());
+        const folder = zip.folder(currentWeek);
 
         try {
-            const downloadPromises = subs.map(async (sub) => {
-                try {
-                    // استخدام fetch مع إعدادات تضمن جلب محتوى الملف كـ Blob
-                    const response = await fetch(sub.fileUrl, {
-                        method: 'GET',
-                        mode: 'cors', // ضروري لعمليات الـ Cross-origin
-                        cache: 'no-cache'
-                    });
-
-                    if (!response.ok) throw new Error("فشل الوصول للملف");
-                    const blob = await response.blob();
-                    
-                    const fileName = `${sub.studentName.replace(/\s+/g, '-')}-${sub.academicIndex}.pdf`;
-                    folder.file(fileName, blob);
-                } catch (e) {
-                    console.error("فشل تحميل ملف طالب:", sub.studentName, e);
-                }
+            const downloadPromises = allSubmissions.map(async ([key, sub]) => {
+                const res = await fetch(sub.fileUrl.replace('/upload/', '/upload/fl_attachment/'));
+                const blob = await res.blob();
+                folder.file(`${sub.studentName.replace(/\s+/g, '-')}-${sub.academicIndex}.pdf`, blob);
             });
-
             await Promise.all(downloadPromises);
-
-            // التحقق من وجود ملفات داخل الـ ZIP قبل الحفظ
-            const zipFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
-            if (zipFiles.length === 0) {
-                throw new Error("لم يتمكن النظام من سحب ملفات PDF. تأكد من إعدادات الأمان في Cloudinary.");
-            }
-
             const content = await zip.generateAsync({ type: "blob" });
             saveAs(content, `${currentSubject}-${currentWeek}.zip`);
-            
-        } catch (e) {
-            alert("خطأ: " + e.message);
-        } finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
+        } catch (e) { alert("خطأ: " + e.message); }
+        finally { btn.innerHTML = originalText; btn.disabled = false; }
     };
 }
 
-// --- 5. وظائف مساعدة ---
+// --- 5. وظائف عامة ---
 function readFileAsDataURL(file) { return new Promise(res => { const reader = new FileReader(); reader.onload = e => res(e.target.result); reader.readAsDataURL(file); }); }
 function toggleStatus(show, text = "") {
     const overlay = document.getElementById('statusOverlay');
@@ -250,6 +246,6 @@ function toggleStatus(show, text = "") {
     if (overlay && statusText) { statusText.innerText = text; show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden'); }
 }
 function renderVerificationUI(email) {
-    document.body.innerHTML = `<div class="min-h-screen flex items-center justify-center p-6 bg-slate-900 text-center"><div class="bg-slate-800 p-10 rounded-[2rem] border border-slate-700 shadow-2xl"><h1 class="text-2xl font-bold mb-4 italic">📧 تفعيل الحساب</h1><p class="text-slate-400 mb-6">أرسلنا الرابط لبريدك:<br><span class="text-blue-400 font-bold">${email}</span></p><button onclick="location.reload()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">تحديث ✅</button></div></div>`;
+    document.body.innerHTML = `<div class="min-h-screen flex items-center justify-center p-6 bg-slate-900 text-center"><div class="bg-slate-800 p-10 rounded-[2rem] border border-slate-700 shadow-2xl"><h1 class="text-2xl font-bold mb-4">📧 تفعيل الحساب</h1><p class="text-slate-400 mb-6">أرسلنا الرابط لبريدك:<br>${email}</p><button onclick="location.reload()" class="w-full bg-blue-600 py-3 rounded-xl font-bold text-white">تحديث ✅</button></div></div>`;
 }
 document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.href = "login.html"));
