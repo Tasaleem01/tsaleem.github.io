@@ -1,6 +1,6 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, signInWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
@@ -13,70 +13,64 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
 const auth = getAuth(app);
+const db = getDatabase(app);
 
-const regForm = document.getElementById('regForm');
-const regMessage = document.getElementById('regMessage');
+const loginForm = document.getElementById('loginForm');
+const loginMessage = document.getElementById('loginMessage');
 
-regForm.addEventListener('submit', async (e) => {
+loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const academicId = document.getElementById('regIndex').value;
-    const college = document.getElementById('regCollege').value;
-    const password = document.getElementById('regPass').value;
-    const confirmPass = document.getElementById('regConfirm').value;
-
-    if (password !== confirmPass) {
-        showMessage("خطأ: كلمات المرور غير متطابقة!", "bg-red-100 text-red-600");
-        return;
-    }
+    
+    const email = document.getElementById('loginEmail').value;
+    const pass = document.getElementById('loginPass').value;
 
     try {
-        // 1. التأكد أن الرقم الجامعي لم يسجل من قبل
-        const userRef = ref(db, 'users/' + academicId);
-        const snapshot = await get(userRef);
-        if (snapshot.exists()) {
-            showMessage("عذراً، هذا الرقم الأكاديمي مسجل مسبقاً!", "bg-yellow-100 text-yellow-700");
+        const userCredential = await signInWithEmailAndPassword(auth, email, pass);
+        const user = userCredential.user;
+
+        // التحقق من التفعيل
+        if (!user.emailVerified) {
+            showMessage("⚠️ بريدك غير موثق! تفقد رسائل البريد (أو الـ Spam) لتفعيل حسابك.", "bg-yellow-100 text-yellow-700");
+            await sendEmailVerification(user); 
+            await signOut(auth);
             return;
         }
 
-        // 2. إنشاء الحساب في Authentication
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+        // جلب بيانات الطالب من Database لمنع الـ undefined
+        const usersSnap = await get(ref(db, 'users'));
+        let studentFound = null;
 
-        // 3. إرسال بريد التوثيق
-        await sendEmailVerification(user);
+        if (usersSnap.exists()) {
+            const allUsers = usersSnap.val();
+            studentFound = Object.values(allUsers).find(u => u.email === email);
+        }
 
-        // 4. حفظ البيانات في Database ليتعرف عليها الآدمن (fullName)
-        const userData = {
-            fullName: name, 
-            email: email,
-            academicIndex: academicId, 
-            college: college,
-            uid: user.uid,
-            createdAt: new Date().toISOString()
-        };
-        await set(userRef, userData);
-
-        // 5. تسجيل الخروج لفرض التفعيل من البريد
-        await signOut(auth);
-
-        showMessage("تم إنشاء الحساب! 📧 تفقد بريدك الإلكتروني لتفعيل الحساب قبل تسجيل الدخول.", "bg-blue-100 text-blue-700 border-2 border-blue-200");
-
-        setTimeout(() => { window.location.href = 'login.html'; }, 5000);
+        if (studentFound) {
+            // تخزين البيانات بـ fullName و academicIndex للآدمن
+            localStorage.setItem('user', JSON.stringify(studentFound));
+            
+            showMessage("✅ جاري الدخول...", "bg-green-100 text-green-700");
+            
+            setTimeout(() => {
+                // توجيه للآدمن إذا كان البريد هو بريدك الخاص
+                if (email === "admin@gmail.com") { 
+                    window.location.href = "admin.html";
+                } else {
+                    window.location.href = "home.html";
+                }
+            }, 1500);
+        } else {
+            showMessage("خطأ: لم نجد بياناتك في قاعدة البيانات", "bg-red-100 text-red-700");
+        }
 
     } catch (error) {
-        let msg = "حدث خطأ في التسجيل";
-        if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل!";
-        showMessage(msg, "bg-red-100 text-red-600");
+        showMessage("البريد أو كلمة المرور غير صحيحة", "bg-red-100 text-red-700");
     }
 });
 
 function showMessage(text, style) {
-    regMessage.textContent = text;
-    regMessage.className = `block text-center font-bold p-4 rounded-2xl text-sm mt-4 ${style}`;
-    regMessage.classList.remove('hidden');
+    loginMessage.textContent = text;
+    loginMessage.className = `block text-center font-bold p-3 rounded-xl text-sm mt-4 ${style}`;
+    loginMessage.classList.remove('hidden');
 }
