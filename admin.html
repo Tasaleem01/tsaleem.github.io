@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>لوحة تحكم الليدر | الإشراف الكامل</title>
+    <title>لوحة تحكم الليدر | الإشراف الاحترافي</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
@@ -12,48 +12,39 @@
         body { font-family: 'Cairo', sans-serif; scroll-behavior: smooth; }
         .fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        ::-webkit-scrollbar { width: 8px; }
-        ::-webkit-scrollbar-track { background: #0f172a; }
-        ::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
+        .custom-scroll::-webkit-scrollbar { width: 6px; }
+        .custom-scroll::-webkit-scrollbar-track { background: #0f172a; }
+        .custom-scroll::-webkit-scrollbar-thumb { background: #334155; border-radius: 10px; }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen p-4 md:p-8">
 
     <div id="settingsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-[70] flex items-center justify-center p-4">
         <div class="bg-slate-800 border border-slate-700 p-8 rounded-[2.5rem] w-full max-w-md shadow-2xl">
-            <h2 class="text-xl font-bold mb-6 flex items-center gap-2 text-blue-400">⚙️ إعدادات النظام</h2>
+            <h2 class="text-xl font-bold mb-6 text-blue-400">⚙️ إعدادات النظام</h2>
             <div class="space-y-4">
-                <div>
-                    <label class="block text-xs text-slate-400 mb-2 font-bold">اسم المادة الحالية</label>
-                    <input type="text" id="setSubject" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-2 font-bold">رمز الأسبوع (مثل: week_1)</label>
-                    <input type="text" id="setWeek" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none">
-                </div>
-                <div>
-                    <label class="block text-xs text-slate-400 mb-2 font-bold">الموعد النهائي لإغلاق التسليم</label>
-                    <input type="datetime-local" id="setDeadline" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none">
-                </div>
-                <div class="flex gap-2 mt-6">
-                    <button onclick="saveSettings()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition-all">حفظ</button>
-                    <button onclick="closeSettings()" class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold transition-all">إلغاء</button>
+                <input type="text" id="setSubject" placeholder="اسم المادة" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 outline-none">
+                <input type="text" id="setWeek" placeholder="رمز الأسبوع (week_1)" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 outline-none">
+                <input type="datetime-local" id="setDeadline" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-3 outline-none">
+                <div class="flex gap-2">
+                    <button onclick="saveSettings()" class="flex-1 bg-blue-600 py-3 rounded-xl font-bold">حفظ</button>
+                    <button onclick="closeSettings()" class="bg-slate-700 px-6 py-3 rounded-xl font-bold">إلغاء</button>
                 </div>
             </div>
         </div>
     </div>
 
     <div id="studentsModal" class="hidden fixed inset-0 bg-black/90 backdrop-blur-md z-[60] flex items-center justify-center p-4">
-        <div class="bg-slate-800 border border-slate-700 rounded-[2.5rem] w-full max-w-4xl max-h-[85vh] overflow-hidden flex flex-col shadow-2xl">
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                <h2 class="text-xl font-bold flex items-center gap-2">👥 إدارة جميع المسجلين</h2>
-                <button onclick="closeStudentsModal()" class="bg-slate-700 hover:bg-red-500/20 text-white p-2 rounded-full transition-all">✕</button>
+        <div class="bg-slate-800 border border-slate-700 rounded-[2.5rem] w-full max-w-4xl max-h-[85vh] flex flex-col shadow-2xl overflow-hidden">
+            <div class="p-6 border-b border-slate-700 flex justify-between items-center">
+                <h2 class="text-xl font-bold">👥 إدارة المسجلين وكشف الغياب</h2>
+                <button onclick="closeStudentsModal()" class="text-2xl hover:text-red-500">✕</button>
             </div>
-            <div class="p-4 bg-slate-900/50 flex gap-4 text-xs font-bold text-center">
-                <div class="flex-1 p-2 bg-emerald-500/10 rounded-xl text-emerald-400 border border-emerald-500/20">سلموا: <span id="countDone" class="text-lg">0</span></div>
-                <div class="flex-1 p-2 bg-red-500/10 rounded-xl text-red-400 border border-red-500/20">لم يسلموا: <span id="countPending" class="text-lg">0</span></div>
+            <div class="p-4 bg-slate-900/50 flex gap-4 text-center font-bold">
+                <div class="flex-1 p-3 bg-emerald-500/10 rounded-2xl text-emerald-400 border border-emerald-500/20">سلموا: <span id="countDone">0</span></div>
+                <div class="flex-1 p-3 bg-red-500/10 rounded-2xl text-red-400 border border-red-500/20">لم يسلموا: <span id="countPending">0</span></div>
             </div>
-            <div class="overflow-y-auto p-6 space-y-3" id="studentsListArea">
+            <div id="studentsListArea" class="custom-scroll overflow-y-auto p-6 space-y-3">
                 </div>
         </div>
     </div>
@@ -63,57 +54,48 @@
             <div class="flex items-center gap-4">
                 <div class="bg-blue-600 p-4 rounded-2xl shadow-lg shadow-blue-900/20 text-2xl">⚡</div>
                 <div>
-                    <h1 id="adminTitle" class="text-2xl font-black italic">لوحة تحكم | جاري التحميل...</h1>
+                    <h1 id="adminTitle" class="text-2xl font-black italic">لوحة تحكم</h1>
                     <p id="activeWeekLabel" class="text-blue-400 text-sm font-bold">الأسبوع: --</p>
                     <p id="deadlineLabel" class="text-red-400 text-[10px] font-bold mt-1 italic"></p>
                 </div>
-                <button onclick="openSettings()" class="hover:rotate-90 transition-all duration-500 p-2 bg-slate-800 rounded-full border border-slate-700">⚙️</button>
+                <button onclick="openSettings()" class="p-2 bg-slate-800 rounded-full border border-slate-700">⚙️</button>
             </div>
-
-            <div class="relative w-full md:w-80">
-                <input type="text" id="searchInput" placeholder="ابحث بالاسم أو الرقم الأكاديمي..." class="w-full bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3 text-sm focus:border-blue-500 outline-none transition-all shadow-inner">
-            </div>
-
+            <input type="text" id="searchInput" placeholder="ابحث بالاسم أو الرقم..." class="w-full md:w-80 bg-slate-800 border border-slate-700 rounded-2xl px-5 py-3 outline-none focus:border-blue-500">
             <div class="flex items-center gap-3">
-                <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-6 py-3 rounded-2xl text-sm border border-slate-700 font-bold">تحديث 🔄</button>
-                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-6 py-3 rounded-2xl text-sm font-bold transition-all">خروج</button>
+                <button onclick="location.reload()" class="bg-slate-800 px-6 py-3 rounded-2xl text-sm border border-slate-700 font-bold">تحديث 🔄</button>
+                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 px-6 py-3 rounded-2xl text-sm font-bold">خروج</button>
             </div>
         </header>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10">
-            <div onclick="openStudentsModal()" class="bg-slate-800/50 p-8 rounded-[2.5rem] border border-blue-500/20 shadow-2xl cursor-pointer hover:scale-105 transition-all group text-center">
-                <p class="text-slate-400 text-xs uppercase mb-2 font-bold group-hover:text-blue-400">إجمالي المسجلين</p>
+            <div onclick="openStudentsModal()" class="bg-slate-800/50 p-8 rounded-[2.5rem] border border-blue-500/20 shadow-2xl cursor-pointer hover:scale-105 transition-all text-center">
+                <p class="text-slate-400 text-xs font-bold mb-2 uppercase">إجمالي المسجلين</p>
                 <h3 id="totalStudents" class="text-6xl font-black">0</h3>
                 <p class="text-[10px] text-blue-500/50 mt-3 font-bold">اضغط لإدارة الطلاب وكشف الغياب 🔍</p>
             </div>
             <div class="bg-slate-800/50 p-8 rounded-[2.5rem] border border-emerald-500/20 shadow-2xl text-center">
-                <p class="text-slate-400 text-xs uppercase mb-2 font-bold">تسليمات الأسبوع</p>
+                <p class="text-slate-400 text-xs font-bold mb-2 uppercase">تسليمات الأسبوع</p>
                 <h3 id="weekSubmissions" class="text-6xl font-black text-emerald-400">0</h3>
-                <p class="text-[10px] text-emerald-500/50 mt-3 font-bold italic">ملفات PDF مرفوعة بنجاح</p>
             </div>
-            <button id="downloadZipBtn" class="bg-gradient-to-br from-blue-600 to-blue-900 hover:brightness-110 p-8 rounded-[2.5rem] shadow-xl shadow-blue-900/20 transition-all transform active:scale-95 flex flex-col items-center justify-center gap-3 group">
-                <span class="text-5xl group-hover:bounce transition-transform">📦</span>
+            <button id="downloadZipBtn" class="bg-gradient-to-br from-blue-600 to-blue-900 p-8 rounded-[2.5rem] shadow-xl shadow-blue-900/20 flex flex-col items-center justify-center gap-3 group">
+                <span class="text-5xl group-hover:scale-110 transition-transform">📦</span>
                 <span class="font-black text-xl">تحميل ملف ZIP</span>
             </button>
         </div>
 
-        <div class="bg-slate-800/80 rounded-[3rem] overflow-hidden border border-slate-700 shadow-2xl">
-            <div class="p-6 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
-                <h2 class="font-black text-lg">قائمة التسليمات الحالية</h2>
-                <span class="text-[10px] font-mono text-slate-500 uppercase tracking-widest">Live Sync Database 🛰️</span>
-            </div>
-            <div class="overflow-x-auto">
+        <div class="bg-slate-800/80 rounded-[3rem] border border-slate-700 shadow-2xl overflow-hidden">
+            <div id="mainTableScroll" class="custom-scroll overflow-y-auto" style="max-height: 600px;">
                 <table class="w-full text-right border-collapse">
-                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] font-black uppercase">
+                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] font-black uppercase sticky top-0 z-10">
                         <tr>
-                            <th class="p-6 tracking-widest">الاسم الرباعي</th>
-                            <th class="p-6 tracking-widest">الرقم الأكاديمي</th>
-                            <th class="p-6 tracking-widest">توقيت الرفع</th>
+                            <th class="p-6">الاسم الرباعي</th>
+                            <th class="p-6">الرقم الأكاديمي</th>
+                            <th class="p-6">التوقيت</th>
                             <th class="p-6 text-center">الإجراءات</th>
                         </tr>
                     </thead>
                     <tbody id="adminTableBody" class="text-sm divide-y divide-slate-700/50">
-                        <tr><td colspan="4" class="p-20 text-center text-slate-500 italic">جاري جلب بيانات السحابة...</td></tr>
+                        <tr><td colspan="4" class="p-20 text-center italic text-slate-500">جاري التحميل...</td></tr>
                     </tbody>
                 </table>
             </div>
