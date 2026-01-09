@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getDatabase, ref, onValue, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. الإعدادات الكاملة ---
+// --- 1. الإعدادات ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -16,7 +16,6 @@ const CLOUD_NAME = "dilxydgpn";
 const UPLOAD_PRESET = "student_uploads"; 
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
 
-// تهيئة Firebase
 const app = initializeApp(firebaseConfig);
 const db = getDatabase(app);
 
@@ -24,8 +23,10 @@ const db = getDatabase(app);
 let selectedFiles = [];
 let currentUser = JSON.parse(localStorage.getItem('user'));
 let currentPdfBlob = null;
+let activeWeek = "week_1"; // قيمة افتراضية سيتم تحديثها من السيرفر
+let subjectName = "";
 
-// --- 3. تهيئة الصفحة ---
+// --- 3. تشغيل الصفحة ---
 window.addEventListener('load', () => {
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
@@ -33,89 +34,77 @@ window.addEventListener('load', () => {
         return;
     }
 
-    // إظهار الواجهة
-    const loader = document.getElementById('initialLoader');
-    loader.style.opacity = '0';
+    document.getElementById('initialLoader').style.opacity = '0';
     setTimeout(() => {
-        loader.classList.add('hidden');
+        document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
     }, 500);
     
-    // عرض البيانات
     document.getElementById('displayUserName').textContent = currentUser.name;
     document.getElementById('displayIndex').textContent = currentUser.academicId;
     document.getElementById('displayCollege').textContent = currentUser.college;
 
-    loadSystemSettings();
+    loadAdminSettings();
 });
 
-// --- 4. جلب إعدادات الآدمن ---
-function loadSystemSettings() {
-    const settingsRef = ref(db, 'systemSettings');
+// --- 4. جلب إعدادات الآدمن (التعديل الجوهري هنا) ---
+function loadAdminSettings() {
+    // نستخدم نفس المسار الموجود في كود الآدمن
+    const settingsRef = ref(db, 'admin_settings');
     onValue(settingsRef, (snapshot) => {
         const data = snapshot.val();
         if (data) {
-            document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${data.subject} - ${data.week}`;
-            document.getElementById('deadlineDate').textContent = new Date(data.deadline).toLocaleString('ar-EG');
+            activeWeek = data.activeWeek; // الأسبوع النشط (مثلاً: week_1)
+            subjectName = data.subjectName; // اسم المادة
+
+            document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${subjectName} - ${activeWeek}`;
             
-            if (new Date() > new Date(data.deadline)) {
-                document.getElementById('uploadCard').innerHTML = `
-                    <div class="text-center p-10">
-                        <div class="text-6xl mb-4">⌛</div>
-                        <h3 class="text-xl font-bold text-red-400">عذراً، انتهى وقت التسليم!</h3>
-                    </div>`;
+            if (data.deadline) {
+                const dlDate = new Date(data.deadline);
+                document.getElementById('deadlineDate').textContent = dlDate.toLocaleString('ar-EG');
+
+                // تحقق من انتهاء الوقت
+                if (new Date().getTime() > data.deadline) {
+                    document.getElementById('uploadCard').innerHTML = `
+                        <div class="text-center p-10">
+                            <div class="text-6xl mb-4">⌛</div>
+                            <h3 class="text-xl font-bold text-red-400">عذراً يا مهندس، انتهى وقت التسليم!</h3>
+                            <p class="text-slate-400 mt-2 italic">لا يمكن رفع التكليفات للأسبوع الحالي بعد الموعد المحدد.</p>
+                        </div>`;
+                }
             }
-        } else {
-            document.getElementById('weekTaskTitle').textContent = "لا توجد تكاليف نشطة حالياً";
         }
     });
 }
 
-// --- 5. منطق الصور والـ PDF ---
-const imageInput = document.getElementById('imageInput');
-imageInput.addEventListener('change', (e) => {
-    selectedFiles = Array.from(e.target.files);
-    if (selectedFiles.length > 0) {
-        const status = document.getElementById('fileStatus');
-        status.textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
-        status.classList.remove('hidden');
-    }
-});
-
+// --- 5. تحويل الصور لـ PDF ---
 document.getElementById('convertBtn').addEventListener('click', async () => {
-    if (selectedFiles.length === 0) return alert("اختر صور أولاً يا مهندس");
+    if (selectedFiles.length === 0) return alert("اختر الصور أولاً");
     
-    toggleOverlay(true, "جاري معالجة الصور وتحويلها لـ PDF...");
+    toggleOverlay(true, "جاري معالجة الصور...");
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF();
 
-    try {
-        for (let i = 0; i < selectedFiles.length; i++) {
-            const imgData = await readFileAsDataURL(selectedFiles[i]);
-            if (i > 0) pdf.addPage();
-            
-            const pdfWidth = pdf.internal.pageSize.getWidth();
-            const pdfHeight = pdf.internal.pageSize.getHeight();
-            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
-            updateProgress(((i + 1) / selectedFiles.length) * 100);
-        }
-
-        currentPdfBlob = pdf.output('blob');
-        const pdfUrl = URL.createObjectURL(currentPdfBlob);
-        document.getElementById('pdfFrame').innerHTML = `<embed src="${pdfUrl}" type="application/pdf" width="100%" height="100%" />`;
-        document.getElementById('previewArea').classList.remove('hidden');
-    } catch (err) {
-        alert("حدث خطأ في إنشاء الملف.");
-    } finally {
-        toggleOverlay(false);
+    for (let i = 0; i < selectedFiles.length; i++) {
+        const imgData = await readFile(selectedFiles[i]);
+        if (i > 0) pdf.addPage();
+        const pdfWidth = pdf.internal.pageSize.getWidth();
+        const pdfHeight = pdf.internal.pageSize.getHeight();
+        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        updateProgress(((i + 1) / selectedFiles.length) * 100);
     }
+
+    currentPdfBlob = pdf.output('blob');
+    document.getElementById('pdfFrame').innerHTML = `<embed src="${URL.createObjectURL(currentPdfBlob)}" width="100%" height="100%" />`;
+    document.getElementById('previewArea').classList.remove('hidden');
+    toggleOverlay(false);
 });
 
-// --- 6. الرفع النهائي ---
+// --- 6. الإرسال (يتوافق مع هيكلة الآدمن) ---
 document.getElementById('finalSubmit').addEventListener('click', async () => {
     if (!currentPdfBlob) return;
+    toggleOverlay(true, "جاري الرفع لـ Cloudinary...");
 
-    toggleOverlay(true, "جاري رفع التكليف للسيرفر... 🚀");
     const formData = new FormData();
     formData.append('file', currentPdfBlob);
     formData.append('upload_preset', UPLOAD_PRESET);
@@ -125,43 +114,39 @@ document.getElementById('finalSubmit').addEventListener('click', async () => {
         const result = await res.json();
 
         if (result.secure_url) {
-            await set(ref(db, `submissions/${currentUser.academicId}`), {
-                name: currentUser.name,
-                academicId: currentUser.academicId,
-                college: currentUser.college,
-                pdfUrl: result.secure_url,
-                time: new Date().toLocaleString('ar-EG'),
-                status: "Done"
+            toggleOverlay(true, "جاري تسجيل البيانات في النظام...");
+            
+            // التسليم يتم في مسار: submissions/{الأسبوع}/{معرف المستخدم}
+            // استخدمنا academicId كمفتاح فريد (UID) كما يفعل الآدمن
+            const uid = currentUser.academicId; 
+            const submissionRef = ref(db, `submissions/${activeWeek}/${uid}`);
+
+            await set(submissionRef, {
+                studentName: currentUser.name,
+                academicIndex: currentUser.academicId,
+                fileUrl: result.secure_url, // الآدمن يبحث عن fileUrl
+                submittedAt: new Date().toLocaleString('ar-EG'),
+                timestamp: new Date().getTime()
             });
-            alert("تم التسليم بنجاح! 🎉");
+
+            alert("تم التسليم بنجاح! شكراً لك يا مهندس.");
             location.reload();
         }
-    } catch (error) {
-        alert("فشل الرفع، تأكد من اتصالك بالإنترنت.");
+    } catch (e) {
+        alert("فشل الرفع: " + e.message);
     } finally {
         toggleOverlay(false);
     }
 });
 
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('user');
-    location.reload();
-});
+// وظائف مساعدة
+document.getElementById('imageInput').onchange = (e) => {
+    selectedFiles = Array.from(e.target.files);
+    document.getElementById('fileStatus').textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
+    document.getElementById('fileStatus').classList.remove('hidden');
+};
 
-function readFileAsDataURL(file) {
-    return new Promise(res => {
-        const r = new FileReader();
-        r.onload = (e) => res(e.target.result);
-        r.readAsDataURL(file);
-    });
-}
-
-function toggleOverlay(show, text = "") {
-    const ov = document.getElementById('statusOverlay');
-    ov.classList.toggle('hidden', !show);
-    document.getElementById('statusText').textContent = text;
-}
-
-function updateProgress(val) {
-    document.getElementById('progressBar').style.width = `${val}%`;
-}
+function readFile(file) { return new Promise(res => { const r = new FileReader(); r.onload = (e) => res(e.target.result); r.readAsDataURL(file); }); }
+function toggleOverlay(s, t) { document.getElementById('statusOverlay').classList.toggle('hidden', !s); document.getElementById('statusText').textContent = t; }
+function updateProgress(v) { document.getElementById('progressBar').style.width = v + '%'; }
+document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('user'); location.reload(); };
