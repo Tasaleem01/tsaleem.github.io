@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. الإعدادات ---
+// --- 1. الإعدادات (تأكد من صحتها) ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -23,85 +23,116 @@ let selectedFiles = [];
 let currentUser = JSON.parse(localStorage.getItem('user'));
 let currentPdfBlob = null;
 let activeWeek = "";
+let countdownInterval;
 
+// --- 2. عند التحميل ---
 window.addEventListener('load', () => {
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('accessDenied').classList.remove('hidden');
         return;
     }
-    
-    document.getElementById('displayUserName').textContent = currentUser.fullName;
-    document.getElementById('displayIndex').textContent = currentUser.academicIndex;
-    document.getElementById('displayCollege').textContent = currentUser.college;
 
-    onValue(ref(db, 'admin_settings'), (snap) => {
-        if (snap.exists()) {
-            activeWeek = snap.val().activeWeek;
-            document.getElementById('weekTaskTitle').textContent = `تكليف: ${snap.val().subjectName} - ${activeWeek}`;
-        }
-    });
+    // عرض بيانات المستخدم
+    document.getElementById('displayUserName').textContent = currentUser.fullName || "مهندس";
+    document.getElementById('displayIndex').textContent = currentUser.academicIndex || "0000";
+    document.getElementById('displayCollege').textContent = currentUser.college || "غير محدد";
+
+    loadAdminSettings();
 
     document.getElementById('initialLoader').classList.add('hidden');
     document.getElementById('mainContent').classList.remove('hidden');
 });
 
-// --- التقاط الصور ---
+// --- 3. جلب الإعدادات والعداد الزمني ---
+function loadAdminSettings() {
+    onValue(ref(db, 'admin_settings'), (snapshot) => {
+        const data = snapshot.val();
+        if (data) {
+            activeWeek = data.activeWeek;
+            document.getElementById('weekTaskTitle').textContent = `تكليف: ${data.subjectName} - ${activeWeek}`;
+            if (data.deadline) {
+                startCountdown(data.deadline);
+            }
+        }
+    });
+}
+
+function startCountdown(deadlineTimestamp) {
+    clearInterval(countdownInterval);
+    const deadlineDisplay = document.getElementById('deadlineDate');
+
+    countdownInterval = setInterval(() => {
+        const now = new Date().getTime();
+        const distance = deadlineTimestamp - now;
+
+        if (distance < 0) {
+            clearInterval(countdownInterval);
+            deadlineDisplay.textContent = "انتهى الموعد ⌛";
+            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500">⚠️ عفواً يا مهندس، انتهى وقت التسليم</div>`;
+            return;
+        }
+
+        const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+        const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+        const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+        const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+
+        deadlineDisplay.textContent = `${days} يوم و ${hours}:${minutes}:${seconds}`;
+    }, 1000);
+}
+
+// --- 4. اختيار الصور ---
 document.getElementById('imageInput').onchange = (e) => {
     selectedFiles = Array.from(e.target.files);
     const status = document.getElementById('fileStatus');
-    status.innerHTML = `✅ تم اختيار ${selectedFiles.length} صور`;
-    status.classList.remove('hidden');
+    if(selectedFiles.length > 0) {
+        status.textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
+        status.classList.remove('hidden');
+    }
 };
 
-// --- تحويل الصور ومعاينتها (معدل للهاتف) ---
+// --- 5. تحويل الصور لـ PDF ---
 document.getElementById('convertBtn').onclick = async (e) => {
     e.preventDefault();
     if (selectedFiles.length === 0) return alert("اختر الصور أولاً");
 
-    toggleOverlay(true, "جاري معالجة الصور... قد يستغرق ذلك ثوانٍ");
+    toggleOverlay(true, "جاري تحويل الصور... انتظر قليلاً");
 
     try {
         const { jsPDF } = window.jspdf;
         const pdf = new jsPDF('p', 'mm', 'a4');
 
         for (let i = 0; i < selectedFiles.length; i++) {
-            const imgData = await readFileAsDataURL(selectedFiles[i]);
+            const imgData = await readFile(selectedFiles[i]);
             if (i > 0) pdf.addPage();
-            
-            const pageWidth = pdf.internal.pageSize.getWidth();
-            const pageHeight = pdf.internal.pageSize.getHeight();
-            
-            // إضافة الصورة بضغط متوسط لضمان نجاح الرفع من الهاتف
-            pdf.addImage(imgData, 'JPEG', 0, 0, pageWidth, pageHeight, undefined, 'FAST');
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
         }
 
         currentPdfBlob = pdf.output('blob');
         const pdfUrl = URL.createObjectURL(currentPdfBlob);
 
-        // إنشاء زر "فتح المعاينة" يفتح في نافذة جديدة (أفضل للهاتف)
-        const frame = document.getElementById('pdfFrame');
-        frame.innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full gap-4 p-4">
-                <p class="text-blue-400 text-sm">تم إنشاء الملف بنجاح!</p>
-                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold shadow-lg">اضغط هنا لفتح ومعاينة الملف 👁️</a>
-                <p class="text-[10px] text-slate-500 italic">بعد المعاينة، ارجع للموقع واضغط "إرسال"</p>
+        // المعاينة
+        document.getElementById('pdfFrame').innerHTML = `
+            <div class="flex flex-col items-center justify-center h-full p-4 gap-4">
+                <p class="text-green-400 font-bold italic text-sm">تم تجهيز الملف بنجاح!</p>
+                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 px-6 py-3 rounded-xl font-bold">👁️ معاينة الملف المدمج</a>
             </div>
         `;
-
         document.getElementById('previewArea').classList.remove('hidden');
         document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
+
     } catch (err) {
-        alert("حدث خطأ أثناء معالجة الصور: " + err.message);
+        alert("خطأ في المعالجة: " + err.message);
     } finally {
         toggleOverlay(false);
     }
 };
 
-// --- الرفع النهائي ---
+// --- 6. الرفع النهائي ---
 document.getElementById('finalSubmit').onclick = async () => {
     if (!currentPdfBlob) return;
-    toggleOverlay(true, "جاري الرفع... 🚀");
+    toggleOverlay(true, "جاري رفع التكليف للسيرفر... 🚀");
 
     const formData = new FormData();
     formData.append('file', currentPdfBlob);
@@ -121,24 +152,24 @@ document.getElementById('finalSubmit').onclick = async () => {
                 timestamp: new Date().getTime()
             });
 
-            alert("كفو! تم التسليم بنجاح ✅");
+            alert("كفو يا مهندس! تم التسليم بنجاح ✅");
             location.reload();
         } else {
-            alert("خطأ في السيرفر: " + (result.error ? result.error.message : "يرجى مراجعة إعدادات Cloudinary"));
+            console.error(result);
+            alert("فشل الرفع! السبب غالباً إعدادات Cloudinary: " + (result.error ? result.error.message : "خطأ مجهول"));
         }
     } catch (e) {
-        alert("فشل الرفع. تأكد من جودة الإنترنت وحاول مرة أخرى.");
+        alert("فشل الاتصال بالسيرفر. تأكد من الإنترنت.");
     } finally {
         toggleOverlay(false);
     }
 };
 
 // وظائف مساعدة
-function readFileAsDataURL(file) {
-    return new Promise((resolve, reject) => {
+function readFile(file) {
+    return new Promise(resolve => {
         const reader = new FileReader();
         reader.onload = (e) => resolve(e.target.result);
-        reader.onerror = (e) => reject(e);
         reader.readAsDataURL(file);
     });
 }
