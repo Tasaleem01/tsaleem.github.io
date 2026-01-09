@@ -32,15 +32,16 @@ window.addEventListener('load', () => {
         document.getElementById('accessDenied').classList.remove('hidden');
         return;
     }
-    
+
     // إخفاء اللودر
     document.getElementById('initialLoader').style.opacity = '0';
     setTimeout(() => {
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
     }, 500);
-    
-    document.getElementById('displayUserName').textContent = currentUser.name;
+
+    // التعديل هنا: استخدام fullName ليتوافق مع بيانات المسجلين
+    document.getElementById('displayUserName').textContent = currentUser.fullName || currentUser.name;
     document.getElementById('displayIndex').textContent = currentUser.academicId;
     document.getElementById('displayCollege').textContent = currentUser.college;
 
@@ -54,7 +55,7 @@ function loadAdminSettings() {
         if (data) {
             activeWeek = data.activeWeek;
             document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${data.subjectName} - ${activeWeek}`;
-            
+
             if (data.deadline) {
                 startCountdown(data.deadline);
             }
@@ -65,7 +66,7 @@ function loadAdminSettings() {
 function startCountdown(deadlineTimestamp) {
     clearInterval(countdownInterval);
     const deadlineDisplay = document.getElementById('deadlineDate');
-    
+
     countdownInterval = setInterval(() => {
         const now = new Date().getTime();
         const distance = deadlineTimestamp - now;
@@ -88,11 +89,11 @@ function startCountdown(deadlineTimestamp) {
 
 // --- 4. تحويل الصور ومعاينة الملف ---
 document.getElementById('convertBtn').addEventListener('click', async (e) => {
-    e.preventDefault(); // منع أي تحديث للصفحة
+    e.preventDefault(); 
     if (selectedFiles.length === 0) return alert("اختر الصور أولاً");
-    
+
     toggleOverlay(true, "جاري إنشاء ملف PDF للمعاينة...");
-    
+
     const { jsPDF } = window.jspdf;
     const pdf = new jsPDF();
 
@@ -106,11 +107,10 @@ document.getElementById('convertBtn').addEventListener('click', async (e) => {
 
     currentPdfBlob = pdf.output('blob');
     const pdfUrl = URL.createObjectURL(currentPdfBlob);
-    
-    // المعاينة داخل الصفحة دون الانتقال لصفحة أخرى
+
     const frame = document.getElementById('pdfFrame');
     frame.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
-    
+
     document.getElementById('previewArea').classList.remove('hidden');
     document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
     toggleOverlay(false);
@@ -132,7 +132,8 @@ document.getElementById('finalSubmit').addEventListener('click', async () => {
         if (result.secure_url) {
             const uid = currentUser.academicId; 
             await set(ref(db, `submissions/${activeWeek}/${uid}`), {
-                studentName: currentUser.name,
+                // التعديل هنا: إرسال studentName و fullName للآدمن
+                studentName: currentUser.fullName || currentUser.name,
                 academicIndex: currentUser.academicId,
                 fileUrl: result.secure_url,
                 submittedAt: new Date().toLocaleString('ar-EG'),
