@@ -40,7 +40,7 @@ if (page === "admin.html") {
                     const dlDate = new Date(s.deadline);
                     document.getElementById('deadlineLabel').innerText = `الموعد النهائي: ${dlDate.toLocaleString('ar-EG')}`;
                 }
-                loadSubmissions(); // تحديث الجدول بناء على الأسبوع الجديد
+                loadSubmissions(); 
             }
         });
 
@@ -67,7 +67,6 @@ if (page === "admin.html") {
         });
     }
 
-    // عرض الجدول مع تحميل كسول
     function renderMainTable(append = false) {
         const tbody = document.getElementById('adminTableBody');
         if (!append) { tbody.innerHTML = ""; tableIndex = 0; }
@@ -88,7 +87,6 @@ if (page === "admin.html") {
         tableIndex += tableBatch;
     }
 
-    // منطق حذف الملف (تحديث محلي فوري)
     window.deleteSubmission = async (uid, name) => {
         if (confirm(`هل تريد حذف ملف المهندس: ${name}؟ سيتم إرسال تنبيه له.`)) {
             try {
@@ -97,7 +95,6 @@ if (page === "admin.html") {
                     message: `تم حذف ملفك في ${currentSubject} - ${currentWeek}. يرجى إعادة الرفع فوراً.`,
                     timestamp: new Date().getTime()
                 });
-                // تحديث فوري للمصفوفة المحلية للخروج من قائمة المسلمين
                 allSubmissions = allSubmissions.filter(item => item[0] !== uid);
                 renderMainTable();
                 document.getElementById('weekSubmissions').innerText = allSubmissions.length;
@@ -105,41 +102,31 @@ if (page === "admin.html") {
         }
     };
 
-    // --- 📦 تحميل ملف ZIP (منع التحميل الفارغ) ---
     document.getElementById('downloadZipBtn').onclick = async () => {
         if (allSubmissions.length === 0) {
             alert("⚠️ لا توجد تسليمات لتحميلها حالياً في هذا الأسبوع!");
             return;
         }
-
         const btn = document.getElementById('downloadZipBtn');
         const originalContent = btn.innerHTML;
         btn.disabled = true;
         btn.innerHTML = `<span class="animate-spin text-2xl">⏳</span> <span class="font-bold">جاري التجميع...</span>`;
-
         try {
             const zip = new JSZip();
             const folder = zip.folder(`${currentSubject}-${currentWeek}`);
-
             const promises = allSubmissions.map(async ([uid, sub]) => {
                 const res = await fetch(sub.fileUrl);
                 const blob = await res.blob();
                 const fileName = `${sub.studentName.replace(/\s+/g, '_')}-${sub.academicIndex}.pdf`;
                 folder.file(fileName, blob);
             });
-
             await Promise.all(promises);
             const content = await zip.generateAsync({ type: "blob" });
             saveAs(content, `${currentSubject}-${currentWeek}.zip`);
-        } catch (e) {
-            alert("خطأ أثناء إنشاء ZIP: " + e.message);
-        } finally {
-            btn.innerHTML = originalContent;
-            btn.disabled = false;
-        }
+        } catch (e) { alert("خطأ أثناء إنشاء ZIP: " + e.message); }
+        finally { btn.innerHTML = originalContent; btn.disabled = false; }
     };
 
-    // --- 👥 نافذة الطلاب والتحميل الكسول وكشف الغياب ---
     window.openStudentsModal = () => {
         document.getElementById('studentsListArea').innerHTML = "";
         studentIndex = 0;
@@ -147,21 +134,34 @@ if (page === "admin.html") {
         renderStudentsList();
     };
 
+    // --- الوظيفة التي تم إصلاحها للربط الصحيح ---
     function renderStudentsList() {
         const area = document.getElementById('studentsListArea');
         const userEntries = Object.entries(allUsers);
-        const submittedUIDs = allSubmissions.map(i => i[0]);
+        
+        // استخراج قائمة الأرقام الأكاديمية ممن قاموا بالتسليم في الأسبوع الحالي
+        const submittedAcademicIndices = allSubmissions.map(item => String(item[1].academicIndex));
 
         let done = 0, pending = 0;
-        userEntries.forEach(([uid]) => submittedUIDs.includes(uid) ? done++ : pending++);
+        userEntries.forEach(([uid, user]) => {
+            const academicId = String(user.academicIndex || user.academicId);
+            if (submittedAcademicIndices.includes(academicId)) {
+                done++;
+            } else {
+                pending++;
+            }
+        });
+
         document.getElementById('countDone').innerText = done;
         document.getElementById('countPending').innerText = pending;
 
         const next = userEntries.slice(studentIndex, studentIndex + studentBatch);
         next.forEach(([uid, user]) => {
-            const hasSub = submittedUIDs.includes(uid);
+            const academicId = String(user.academicIndex || user.academicId);
+            const hasSub = submittedAcademicIndices.includes(academicId);
+            
             area.insertAdjacentHTML('beforeend', `
-                <div class="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-700/50 rounded-2xl">
+                <div class="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-700/50 rounded-2xl mb-2">
                     <div class="flex items-center gap-3">
                         <div class="w-3 h-3 rounded-full ${hasSub ? 'bg-emerald-500 shadow-[0_0_10px_#10b981]' : 'bg-red-500 shadow-[0_0_10px_#ef4444]'}"></div>
                         <div>
@@ -178,7 +178,6 @@ if (page === "admin.html") {
         studentIndex += studentBatch;
     }
 
-    // حذف حساب مستخدم نهائياً
     window.deleteUserAccount = async (uid, name) => {
         if (confirm(`⚠️ تحذير: سيتم حذف حساب "${name}" نهائياً من النظام. هل أنت متأكد؟`)) {
             await set(ref(db, `users/${uid}`), null);
@@ -191,7 +190,6 @@ if (page === "admin.html") {
         }
     };
 
-    // تمرير النوافذ
     document.getElementById('studentsListArea').onscroll = function(e) {
         if (this.scrollTop + this.clientHeight >= this.scrollHeight - 5) {
             if (studentIndex < Object.keys(allUsers).length) renderStudentsList();
@@ -203,7 +201,6 @@ if (page === "admin.html") {
         }
     };
 
-    // البحث
     document.getElementById('searchInput').oninput = (e) => {
         const term = e.target.value.toLowerCase();
         const filtered = allSubmissions.filter(([u, s]) => s.studentName.toLowerCase().includes(term) || s.academicIndex.includes(term));
@@ -214,11 +211,12 @@ if (page === "admin.html") {
                 <td class="p-4 font-bold text-slate-200">${sub.studentName}</td>
                 <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
                 <td class="p-4 text-[10px] text-slate-500">${sub.submittedAt}</td>
-                <td class="p-4 text-center">...</td></tr>`); // اختصار للعرض فقط
+                <td class="p-4 flex justify-center gap-2">
+                    <a href="${sub.fileUrl}" target="_blank" class="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold border border-blue-600/20">فتح PDF</a>
+                </td></tr>`);
         });
     };
 
-    // إعدادات الليدر
     window.openSettings = () => {
         document.getElementById('setSubject').value = currentSubject;
         document.getElementById('setWeek').value = currentWeek;
@@ -241,7 +239,6 @@ if (page === "admin.html") {
     };
 }
 
-// تسجيل الخروج
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
     signOut(auth).then(() => window.location.href = "login.html");
 });
