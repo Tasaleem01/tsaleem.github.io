@@ -9,62 +9,78 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; scroll-behavior: smooth; }
+        body { font-family: 'Cairo', sans-serif; }
         .fade-in { animation: fadeIn 0.5s ease-out; }
         @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
-        .pulse-green { animation: pulse 2s infinite; }
-        @keyframes pulse { 
-            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
-            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
-            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
-        }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen p-4 md:p-8">
 
+    <div id="settingsModal" class="hidden fixed inset-0 bg-black/80 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+        <div class="bg-slate-800 border border-slate-700 p-8 rounded-[2rem] w-full max-w-md shadow-2xl">
+            <h2 class="text-xl font-bold mb-6 flex items-center gap-2">⚙️ إعدادات النظام</h2>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-xs text-slate-400 mb-2">اسم المادة</label>
+                    <input type="text" id="setSubject" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-2">رمز الأسبوع (مثلاً week_1)</label>
+                    <input type="text" id="setWeek" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none">
+                </div>
+                <div>
+                    <label class="block text-xs text-slate-400 mb-2">الموعد النهائي لإغلاق الرفع</label>
+                    <input type="datetime-local" id="setDeadline" class="w-full bg-slate-900 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none color-white">
+                </div>
+                <div class="flex gap-2 mt-6">
+                    <button onclick="saveSettings()" class="flex-1 bg-blue-600 hover:bg-blue-500 py-3 rounded-xl font-bold transition-all">حفظ التغييرات</button>
+                    <button onclick="closeSettings()" class="bg-slate-700 hover:bg-slate-600 px-6 py-3 rounded-xl font-bold transition-all">إلغاء</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <div class="max-w-6xl mx-auto fade-in">
         <header class="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-slate-700 pb-6 gap-4">
             <div class="flex items-center gap-4">
-                <div class="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-900/20">
-                    <span class="text-2xl">⚡</span>
-                </div>
+                <div class="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-900/20">⚡</div>
                 <div>
-                    <h1 id="adminTitle" class="text-2xl md:text-3xl font-bold text-white italic">لوحة تحكم | جاري التحميل...</h1>
-                    <p id="activeWeekLabel" class="text-blue-400 text-sm font-semibold tracking-wide">الأسبوع: --</p>
-                    <p id="deadlineLabel" class="text-red-400 text-[10px] font-bold mt-1"></p>
+                    <h1 id="adminTitle" class="text-2xl font-bold italic">لوحة تحكم | جاري التحميل...</h1>
+                    <p id="activeWeekLabel" class="text-blue-400 text-sm font-semibold">الأسبوع: --</p>
+                    <p id="deadlineLabel" class="text-red-400 text-[10px] font-bold mt-1 italic"></p>
                 </div>
-                <button onclick="toggleSettings()" class="hover:rotate-90 transition-transform duration-500 p-2 bg-slate-800 rounded-full border border-slate-700" title="إعدادات النظام">⚙️</button>
+                <button onclick="openSettings()" class="hover:rotate-90 transition-transform duration-500 p-2 bg-slate-800 rounded-full border border-slate-700">⚙️</button>
             </div>
 
             <div class="relative w-full md:w-64">
-                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-blue-500 transition-all">
+                <input type="text" id="searchInput" placeholder="بحث بالاسم أو الرقم..." class="w-full bg-slate-800 border border-slate-700 rounded-xl px-4 py-2 text-sm focus:border-blue-500 outline-none transition-all">
             </div>
 
             <div class="flex items-center gap-3">
-                <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-2xl text-sm font-medium border border-slate-700 transition-all active:scale-95">تحديث 🔄</button>
-                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all">خروج</button>
+                <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-2xl text-sm border border-slate-700">تحديث 🔄</button>
+                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-5 py-2.5 rounded-2xl text-sm font-bold">خروج</button>
             </div>
         </header>
 
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 text-center">
-            <div class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-slate-700/50 shadow-2xl">
-                <p class="text-slate-400 text-xs uppercase tracking-widest mb-2 font-bold">إجمالي المسجلين</p>
-                <h3 id="totalStudents" class="text-5xl font-black text-white">0</h3>
+            <div class="bg-slate-800/50 p-6 rounded-[2.5rem] border border-slate-700/50 shadow-2xl">
+                <p class="text-slate-400 text-xs uppercase mb-2">إجمالي المسجلين</p>
+                <h3 id="totalStudents" class="text-5xl font-black">0</h3>
             </div>
-            <div class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-emerald-500/20 shadow-2xl relative">
-                <p class="text-slate-400 text-xs uppercase tracking-widest mb-2 font-bold">تسليمات الأسبوع</p>
+            <div class="bg-slate-800/50 p-6 rounded-[2.5rem] border border-emerald-500/20 shadow-2xl">
+                <p class="text-slate-400 text-xs uppercase mb-2">تسليمات الأسبوع</p>
                 <h3 id="weekSubmissions" class="text-5xl font-black text-emerald-400">0</h3>
             </div>
-            <button id="downloadZipBtn" class="bg-gradient-to-br from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 p-6 rounded-[2.5rem] shadow-xl shadow-blue-900/40 transition-all transform active:scale-95 flex flex-col items-center justify-center gap-2 group">
-                <span class="text-4xl transition-transform group-hover:scale-110">📦</span>
+            <button id="downloadZipBtn" class="bg-gradient-to-br from-blue-600 to-blue-800 hover:shadow-blue-900/40 p-6 rounded-[2.5rem] shadow-xl transition-all transform active:scale-95 flex flex-col items-center justify-center gap-2 group">
+                <span class="text-4xl group-hover:scale-110 transition-transform">📦</span>
                 <span class="font-black text-lg">تحميل ملف ZIP</span>
             </button>
         </div>
 
-        <div class="bg-slate-800/80 rounded-[2.5rem] overflow-hidden border border-slate-700 shadow-2xl mb-10">
+        <div class="bg-slate-800/80 rounded-[2.5rem] overflow-hidden border border-slate-700 shadow-2xl">
             <div class="overflow-x-auto">
                 <table class="w-full text-right border-collapse">
-                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] uppercase tracking-tighter">
+                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] uppercase">
                         <tr>
                             <th class="p-6 font-black">الاسم الرباعي</th>
                             <th class="p-6 font-black">الرقم الأكاديمي</th>
@@ -73,12 +89,13 @@
                         </tr>
                     </thead>
                     <tbody id="adminTableBody" class="text-sm divide-y divide-slate-700/50">
-                        <tr><td colspan="4" class="p-20 text-center italic text-slate-500">جاري سحب البيانات...</td></tr>
+                        <tr><td colspan="4" class="p-20 text-center text-slate-500 animate-pulse italic">جاري جلب بيانات المهندسين...</td></tr>
                     </tbody>
                 </table>
             </div>
         </div>
     </div>
+
     <script type="module" src="main.js"></script>
 </body>
 </html>
