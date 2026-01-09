@@ -27,7 +27,7 @@ let currentWeek = "week_1";
 let currentSubject = "الكهرباء";
 const page = window.location.pathname.split("/").pop() || "index.html";
 
-// --- 2. منطق الحسابات (تسجيل ودخول) ---
+// --- 2. منطق الحسابات ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
     if (regForm) {
@@ -63,7 +63,7 @@ if (page === "login.html") {
     }
 }
 
-// --- 3. منطق صفحة الطالب (index.html) ---
+// --- 3. صفحة الطالب ---
 if (page === "index.html" || page === "") {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -86,7 +86,7 @@ if (page === "index.html" || page === "") {
         convertBtn.onclick = async () => {
             const files = Array.from(document.getElementById('imageInput').files);
             if (files.length === 0) return alert("اختر الصور أولاً");
-            toggleStatus(true, "جاري تحويل الصور إلى PDF... ⏳");
+            toggleStatus(true, "جاري تحويل الصور... ⏳");
             const { jsPDF } = window.jspdf;
             const doc = new jsPDF('p', 'mm', 'a4');
             for (let i = 0; i < files.length; i++) {
@@ -118,7 +118,7 @@ if (page === "index.html" || page === "") {
             formData.append("public_id", fileName);
 
             try {
-                toggleStatus(true, "جاري الرفع إلى السحابة... 🚀");
+                toggleStatus(true, "جاري الرفع... 🚀");
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
                 const data = await res.json();
                 if (data.secure_url) {
@@ -128,7 +128,7 @@ if (page === "index.html" || page === "") {
                         fileUrl: data.secure_url,
                         submittedAt: new Date().toLocaleString('ar-EG')
                     });
-                    toggleStatus(true, "✅ تم التسليم بنجاح!");
+                    toggleStatus(true, "✅ تم التسليم!");
                     setTimeout(() => toggleStatus(false), 3000);
                 }
             } catch (e) { alert("خطأ: " + e.message); toggleStatus(false); }
@@ -136,7 +136,7 @@ if (page === "index.html" || page === "") {
     }
 }
 
-// --- 4. منطق صفحة الأدمن (admin.html) ---
+// --- 4. صفحة الأدمن (admin.html) ---
 if (page === "admin.html") {
     onAuthStateChanged(auth, (user) => {
         if (!user) { window.location.href = "login.html"; }
@@ -166,59 +166,76 @@ if (page === "admin.html") {
                 document.getElementById('weekSubmissions').innerText = subs.length;
                 subs.forEach(sub => {
                     tableBody.innerHTML += `
-                        <tr class="border-b border-slate-700 hover:bg-slate-800">
+                        <tr class="border-b border-slate-700">
                             <td class="p-4 font-bold">${sub.studentName}</td>
                             <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
-                            <td class="p-4 text-xs text-slate-400">${sub.submittedAt}</td>
+                            <td class="p-4 text-xs">${sub.submittedAt}</td>
                             <td class="p-4"><a href="${sub.fileUrl}" target="_blank" class="text-green-400 font-bold underline">فتح PDF</a></td>
                         </tr>`;
                 });
             } else {
                 document.getElementById('weekSubmissions').innerText = "0";
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-500 italic">لا توجد تسليمات</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center">لا توجد تسليمات</td></tr>`;
             }
         });
     }
 
     window.toggleSettings = () => {
         const newSubject = prompt("اسم المادة:", currentSubject);
-        const newWeek = prompt("رمز الأسبوع (مثال: week_2):", currentWeek);
+        const newWeek = prompt("رمز الأسبوع:", currentWeek);
         if (newSubject && newWeek) {
             set(ref(db, 'admin_settings'), { activeWeek: newWeek, subjectName: newSubject });
         }
     };
     
-    // حل مشكلة المجلد الفارغ والبطء
+    // الجزء المعدل لحل مشكلة المجلد الفارغ (CORS Fix)
     document.getElementById('downloadZipBtn').onclick = async () => {
         const subSnap = await get(ref(db, `submissions/${currentWeek}`));
-        if (!subSnap.exists()) return alert("لا توجد ملفات لتحميلها");
+        if (!subSnap.exists()) return alert("لا توجد ملفات");
         
         const btn = document.getElementById('downloadZipBtn');
         const originalText = btn.innerHTML;
-        btn.innerHTML = "جاري التحميل... ⏳";
+        btn.innerHTML = "جاري تجميع الملفات... ⏳";
         btn.disabled = true;
 
         const zip = new JSZip();
-        const folder = zip.folder(`تسليمات-${currentWeek}`);
+        const folder = zip.folder(`Assignments-${currentWeek}`);
         const subs = Object.values(subSnap.val());
 
         try {
-            // تحميل متوازي لجميع الملفات لضمان السرعة وعدم الفقدان
             const downloadPromises = subs.map(async (sub) => {
-                const res = await fetch(sub.fileUrl);
-                const blob = await res.blob();
-                const fileName = `${sub.studentName.replace(/\s+/g, '-')}-${sub.academicIndex}.pdf`;
-                folder.file(fileName, blob);
+                try {
+                    // استخدام fetch مع إعدادات تضمن جلب محتوى الملف كـ Blob
+                    const response = await fetch(sub.fileUrl, {
+                        method: 'GET',
+                        mode: 'cors', // ضروري لعمليات الـ Cross-origin
+                        cache: 'no-cache'
+                    });
+
+                    if (!response.ok) throw new Error("فشل الوصول للملف");
+                    const blob = await response.blob();
+                    
+                    const fileName = `${sub.studentName.replace(/\s+/g, '-')}-${sub.academicIndex}.pdf`;
+                    folder.file(fileName, blob);
+                } catch (e) {
+                    console.error("فشل تحميل ملف طالب:", sub.studentName, e);
+                }
             });
 
             await Promise.all(downloadPromises);
+
+            // التحقق من وجود ملفات داخل الـ ZIP قبل الحفظ
+            const zipFiles = Object.keys(zip.files).filter(k => !zip.files[k].dir);
+            if (zipFiles.length === 0) {
+                throw new Error("لم يتمكن النظام من سحب ملفات PDF. تأكد من إعدادات الأمان في Cloudinary.");
+            }
+
             const content = await zip.generateAsync({ type: "blob" });
             saveAs(content, `${currentSubject}-${currentWeek}.zip`);
             
-            btn.innerHTML = originalText;
-            btn.disabled = false;
         } catch (e) {
-            alert("حدث خطأ أثناء التجميع: " + e.message);
+            alert("خطأ: " + e.message);
+        } finally {
             btn.innerHTML = originalText;
             btn.disabled = false;
         }
@@ -233,6 +250,6 @@ function toggleStatus(show, text = "") {
     if (overlay && statusText) { statusText.innerText = text; show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden'); }
 }
 function renderVerificationUI(email) {
-    document.body.innerHTML = `<div class="min-h-screen flex items-center justify-center p-6 bg-slate-900"><div class="bg-slate-800 p-10 rounded-[2rem] text-center border border-slate-700 shadow-2xl"><h1 class="text-2xl font-bold mb-4">فعل حسابك</h1><p class="text-slate-400 mb-6">أرسلنا الرابط لـ: ${email}</p><button onclick="location.reload()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">لقد فعلت ✅</button></div></div>`;
+    document.body.innerHTML = `<div class="min-h-screen flex items-center justify-center p-6 bg-slate-900 text-center"><div class="bg-slate-800 p-10 rounded-[2rem] border border-slate-700 shadow-2xl"><h1 class="text-2xl font-bold mb-4 italic">📧 تفعيل الحساب</h1><p class="text-slate-400 mb-6">أرسلنا الرابط لبريدك:<br><span class="text-blue-400 font-bold">${email}</span></p><button onclick="location.reload()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">تحديث ✅</button></div></div>`;
 }
 document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.href = "login.html"));
