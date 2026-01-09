@@ -1,82 +1,77 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, reload } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-const firebaseConfig = {
-    apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
-    authDomain: "tasaleem-c2218.firebaseapp.com",
-    databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
-    projectId: "tasaleem-c2218",
-    storageBucket: "tasaleem-c2218.firebasestorage.app",
-    messagingSenderId: "877790432223",
-    appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
-};
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب مهندس | منصة التسليم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; }
+        .input-field {
+            width: 100%; padding: 0.85rem; border: 2px solid #f1f5f9; border-radius: 1.25rem;
+            outline: none; transition: all 0.3s; background: #f8fafc;
+        }
+        .input-field:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
 
-const regForm = document.getElementById('regForm');
-const regMessage = document.getElementById('regMessage');
+    <div class="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-slate-100">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-slate-800">حساب مهندس جديد ⚡</h2>
+            <p class="text-slate-500 mt-2 text-sm">يرجى إدخال بياناتك بدقة لتتمكن من رفع التكليفات</p>
+        </div>
 
-regForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const academicId = document.getElementById('regIndex').value;
-    const college = document.getElementById('regCollege').value;
-    const password = document.getElementById('regPass').value;
-
-    try {
-        // 1. إنشاء الحساب في نظام الحماية
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
-
-        // 2. إرسال رابط التفعيل (سيصلك إيميل من Firebase)
-        await sendEmailVerification(user);
-
-        // 3. حفظ البيانات في القاعدة للآدمن
-        const userData = {
-            fullName: name,
-            email: email,
-            academicIndex: academicId,
-            college: college,
-            uid: user.uid
-        };
-        await set(ref(db, 'users/' + academicId), userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-
-        // 4. تغيير شكل الصفحة لإجبار الطالب على التفعيل
-        regForm.innerHTML = `
-            <div class="text-center p-6 bg-white rounded-3xl shadow-xl border-2 border-blue-500">
-                <h3 class="text-xl font-bold text-blue-700">📧 تفقد بريدك الإلكتروني</h3>
-                <p class="text-sm text-gray-600 my-4">أرسلنا رابط تفعيل لـ: <br><b>${email}</b></p>
-                <p class="text-xs text-red-500 mb-4">(إذا لم تجدها، ابحث في Spam أو Junk)</p>
-                
-                <button id="checkAuthBtn" class="w-full bg-green-600 text-white py-3 rounded-xl font-bold mb-3">لقد ضغطت على الرابط، ادخلني الآن ✅</button>
-                <button id="resendMail" class="text-blue-600 underline text-xs">إعادة إرسال الرابط</button>
+        <form id="regForm" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الاسم الثلاثي (على الأقل)</label>
+                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="input-field" required>
             </div>
-        `;
 
-        // وظيفة زر التحقق
-        document.getElementById('checkAuthBtn').onclick = async () => {
-            await reload(auth.currentUser); // تحديث الحالة لمعرفة هل ضغط الرابط أم لا
-            if (auth.currentUser.emailVerified) {
-                alert("تم التفعيل بنجاح! جاري التوجيه...");
-                window.location.href = 'index.html';
-            } else {
-                alert("عذراً، لم تضغط على رابط التفعيل في بريدك بعد.");
-            }
-        };
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">البريد الإلكتروني (Gmail)</label>
+                <input type="email" id="regEmail" placeholder="example@gmail.com" class="input-field" required>
+            </div>
 
-        // وظيفة إعادة الإرسال
-        document.getElementById('resendMail').onclick = async () => {
-            await sendEmailVerification(auth.currentUser);
-            alert("تم إعادة إرسال الرابط، تفقد بريدك.");
-        };
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الرقم الجامعي / Index</label>
+                    <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="input-field" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الجامعة والتخصص</label>
+                    <select id="regCollege" class="input-field cursor-pointer">
+                        <option value="السودان العالمية_كهرباء">السودان العالمية - كهرباء</option>
+                        <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
+                        <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
+                        <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
+                        <option value="الحياة_طبية">الحياة - هندسة طبية</option>
+                        <option value="الحياة_كهرباء">الحياة - هندسة كهرباء</option>
+                        <option value="الحياة_اتصالات">الحياة - اتصالات</option>
+                    </select>
+                </div>
+            </div>
 
-    } catch (error) {
-        alert("خطأ: " + error.message);
-    }
-});
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="password" id="regPass" placeholder="كلمة المرور" class="input-field" required>
+                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="input-field" required>
+            </div>
+
+            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-900 transition-all shadow-lg active:scale-[0.98]">
+                إنشاء الحساب وتوثيقه 📧
+            </button>
+
+            <div id="regMessage" class="hidden text-center font-bold p-4 rounded-2xl text-sm mt-4"></div>
+
+            <p class="text-center text-slate-400 text-xs mt-4">
+                لديك حساب بالفعل؟ <a href="index.html" class="text-blue-600 font-bold underline">سجل دخولك هنا</a>
+            </p>
+        </form>
+    </div>
+
+    <script type="module" src="register.js"></script>
+</body>
+</html>
