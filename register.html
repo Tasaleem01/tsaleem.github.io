@@ -1,153 +1,75 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, reload } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-
-// --- إعدادات Firebase (كما هي) ---
-const firebaseConfig = {
-    apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
-    authDomain: "tasaleem-c2218.firebaseapp.com",
-    databaseURL: "https://tasaleem-c2218-default-rtdb.firebaseio.com",
-    projectId: "tasaleem-c2218",
-    storageBucket: "tasaleem-c2218.firebasestorage.app",
-    messagingSenderId: "877790432223",
-    appId: "1:877790432223:web:5d7b6a4423f2198af8126a"
-};
-
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
-const auth = getAuth(app);
-
-const regForm = document.getElementById('regForm');
-
-// دالة التحقق من الاسم الثلاثي
-function isTripleName(name) {
-    const words = name.trim().split(/\s+/);
-    return words.length >= 3;
-}
-
-regForm.addEventListener('submit', async (e) => {
-    e.preventDefault();
-
-    const name = document.getElementById('regName').value;
-    const email = document.getElementById('regEmail').value;
-    const academicId = document.getElementById('regIndex').value;
-    const college = document.getElementById('regCollege').value;
-    const password = document.getElementById('regPass').value;
-
-    // 1. التحقق من الاسم الثلاثي
-    if (!isTripleName(name)) {
-        alert("⚠️ يرجى إدخال الاسم الثلاثي على الأقل لضمان تسجيل بياناتك بشكل صحيح.");
-        return;
-    }
-
-    // 2. التحقق من طول كلمة المرور (اختياري لكنه مهم)
-    if (password.length < 6) {
-        alert("⚠️ كلمة المرور ضعيفة، يجب أن تكون 6 أحرف أو أرقام على الأقل.");
-        return;
-    }
-
-    try {
-        // 3. التحقق من تكرار الرقم الجامعي في القاعدة
-        const usersRef = ref(db, 'users');
-        const snapshot = await get(usersRef);
-        
-        if (snapshot.exists()) {
-            const allUsers = snapshot.val();
-            const isDuplicateIndex = Object.values(allUsers).some(u => String(u.academicIndex) === String(academicId));
-            
-            if (isDuplicateIndex) {
-                alert("⚠️ الرقم الجامعي / الأكاديمي مستخدم من قبل، يرجى التأكد من الرقم.");
-                return;
-            }
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>إنشاء حساب مهندس | منصة التسليم</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
+        body { font-family: 'Cairo', sans-serif; background-color: #f1f5f9; }
+        .input-field {
+            width: 100%; padding: 0.85rem; border: 2px solid #f1f5f9; border-radius: 1.25rem;
+            outline: none; transition: all 0.3s; background: #f8fafc;
         }
+        .input-field:focus { border-color: #3b82f6; background: #fff; box-shadow: 0 0 0 4px rgba(59, 130, 246, 0.1); }
+    </style>
+</head>
+<body class="min-h-screen flex items-center justify-center p-4">
 
-        // 4. إنشاء الحساب في Firebase Auth
-        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-        const user = userCredential.user;
+    <div class="bg-white p-8 md:p-10 rounded-[2.5rem] shadow-2xl w-full max-w-lg border border-slate-100">
+        <div class="text-center mb-8">
+            <h2 class="text-3xl font-bold text-slate-800">حساب مهندس جديد ⚡</h2>
+            <p class="text-slate-500 mt-2 text-sm">يرجى إدخال بياناتك بدقة لتتمكن من رفع التكليفات</p>
+        </div>
 
-        // 5. إرسال رابط التوثيق
-        await sendEmailVerification(user);
+        <form id="regForm" class="space-y-4">
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الاسم الثلاثي (على الأقل)</label>
+                <input type="text" id="regName" placeholder="مثال: محمد أحمد علي" class="input-field" required>
+            </div>
 
-        // 6. حفظ البيانات باستخدام UID كعنوان فريد
-        const userData = {
-            fullName: name,
-            email: email,
-            academicIndex: academicId,
-            college: college,
-            uid: user.uid,
-            registeredAt: new Date().toLocaleString('ar-EG')
-        };
+            <div>
+                <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">البريد الإلكتروني (Gmail)</label>
+                <input type="email" id="regEmail" placeholder="example@gmail.com" class="input-field" required>
+            </div>
 
-        await set(ref(db, 'users/' + user.uid), userData);
-        localStorage.setItem('user', JSON.stringify(userData));
-
-        // 7. إظهار الـ Modal
-        showVerificationModal(email);
-
-    } catch (error) {
-        // إدارة الأخطاء بالأسماء العربية
-        console.error(error.code);
-        switch (error.code) {
-            case 'auth/email-already-in-use':
-                alert("⚠️ البريد الإلكتروني مستخدم من قبل، حاول تسجيل الدخول.");
-                break;
-            case 'auth/invalid-email':
-                alert("⚠️ صيغة البريد الإلكتروني غير صحيحة.");
-                break;
-            case 'auth/weak-password':
-                alert("⚠️ كلمة المرور قصيرة جداً.");
-                break;
-            default:
-                alert("⚠️ حدث خطأ أثناء التسجيل: " + error.message);
-        }
-    }
-});
-
-// وظيفة الـ Modal (كما هي مع تحسين بسيط في الرسائل)
-function showVerificationModal(email) {
-    const modalHtml = `
-    <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
-        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-300 text-right" dir="rtl">
-            <div class="text-center">
-                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">📧</div>
-                <h3 class="text-2xl font-bold text-slate-800">تفقد بريدك الإلكتروني</h3>
-                <p class="text-slate-500 mt-3 text-sm leading-relaxed">
-                    لقد أرسلنا رابط توثيق إلى البريد: <br>
-                    <span class="font-bold text-slate-800">${email}</span>
-                </p>
-                <div class="space-y-3 mt-8">
-                    <button id="confirmVerifyBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 shadow-lg active:scale-95 transition-all">
-                        لقد ضغطت على الرابط، دخول ✅
-                    </button>
-                    <button id="resendLinkBtn" class="text-slate-400 text-xs font-bold hover:text-blue-600 transition-colors">
-                        لم يصلني الرابط؟ إعادة إرسال
-                    </button>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الرقم الجامعي / Index</label>
+                    <input type="text" id="regIndex" placeholder="مثال: ps_22_011" class="input-field" required>
+                </div>
+                <div>
+                    <label class="block text-xs font-bold text-slate-500 mb-1 mr-2">الجامعة والتخصص</label>
+                    <select id="regCollege" class="input-field cursor-pointer">
+                        <option value="السودان العالمية_كهرباء">السودان العالمية - كهرباء</option>
+                        <option value="السودان العالمية_الكترونيات">السودان العالمية - الكترونيات</option>
+                        <option value="السودان العالمية_طبية">السودان العالمية - هندسة طبية</option>
+                        <option value="السودان العالمية_اتصالات">السودان العالمية - اتصالات</option>
+                        <option value="الحياة_طبية">الحياة - هندسة طبية</option>
+                        <option value="الحياة_كهرباء">الحياة - هندسة كهرباء</option>
+                        <option value="الحياة_اتصالات">الحياة - اتصالات</option>
+                    </select>
                 </div>
             </div>
-        </div>
-    </div>`;
 
-    document.body.insertAdjacentHTML('beforeend', modalHtml);
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input type="password" id="regPass" placeholder="كلمة المرور" class="input-field" required>
+                <input type="password" id="regConfirm" placeholder="تأكيد كلمة المرور" class="input-field" required>
+            </div>
 
-    document.getElementById('confirmVerifyBtn').onclick = async () => {
-        const btn = document.getElementById('confirmVerifyBtn');
-        btn.innerHTML = "جاري التحقق... ⏳";
-        await reload(auth.currentUser);
-        if (auth.currentUser.emailVerified) {
-            alert("تم التوثيق بنجاح! أهلاً بك يا مهندس.");
-            window.location.href = 'index.html';
-        } else {
-            btn.innerHTML = "لقد ضغطت على الرابط، دخول ✅";
-            alert("⚠️ عذراً، لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط في بريدك.");
-        }
-    };
+            <button type="submit" class="w-full bg-slate-800 text-white py-4 rounded-2xl font-bold text-lg hover:bg-slate-900 transition-all shadow-lg active:scale-[0.98]">
+                إنشاء الحساب وتوثيقه 📧
+            </button>
 
-    document.getElementById('resendLinkBtn').onclick = async () => {
-        try {
-            await sendEmailVerification(auth.currentUser);
-            alert("تم إعادة إرسال رابط التوثيق بنجاح ✅");
-        } catch (e) {
-            alert("يرجى الانتظار دقيقة قبل طلب إعادة الإرسال.");
-        }
-    };
-}
+            <div id="regMessage" class="hidden text-center font-bold p-4 rounded-2xl text-sm mt-4"></div>
+
+            <p class="text-center text-slate-400 text-xs mt-4">
+                لديك حساب بالفعل؟ <a href="index.html" class="text-blue-600 font-bold underline">سجل دخولك هنا</a>
+            </p>
+        </form>
+    </div>
+
+    <script type="module" src="register.js"></script>
+</body>
+</html>
