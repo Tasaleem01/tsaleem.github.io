@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. الإعدادات (تأكد من صحتها) ---
+// --- 1. الإعدادات ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -22,10 +22,10 @@ const db = getDatabase(app);
 let selectedFiles = [];
 let currentUser = JSON.parse(localStorage.getItem('user'));
 let currentPdfBlob = null;
-let activeWeek = "";
+let activeWeek = "week_1"; // قيمة افتراضية سيتم تحديثها من الأدمن
 let countdownInterval;
 
-// --- 2. عند التحميل ---
+// --- 2. عند تحميل الصفحة والتحقق من الهوية ---
 window.addEventListener('load', () => {
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
@@ -33,24 +33,27 @@ window.addEventListener('load', () => {
         return;
     }
 
-    // عرض بيانات المستخدم
-    document.getElementById('displayUserName').textContent = currentUser.fullName || "مهندس";
-    document.getElementById('displayIndex').textContent = currentUser.academicIndex || "0000";
+    // عرض بيانات المستخدم في الهيدر (التوافق مع مسميات register.js)
+    document.getElementById('displayUserName').textContent = currentUser.fullName || currentUser.name;
+    document.getElementById('displayIndex').textContent = currentUser.academicIndex || currentUser.academicId;
     document.getElementById('displayCollege').textContent = currentUser.college || "غير محدد";
 
+    // جلب إعدادات الأسبوع والعد التنازلي من الأدمن
     loadAdminSettings();
 
+    // إخفاء لودر التحقق
     document.getElementById('initialLoader').classList.add('hidden');
     document.getElementById('mainContent').classList.remove('hidden');
 });
 
-// --- 3. جلب الإعدادات والعداد الزمني ---
+// --- 3. جلب إعدادات الأدمن والعداد ---
 function loadAdminSettings() {
     onValue(ref(db, 'admin_settings'), (snapshot) => {
         const data = snapshot.val();
         if (data) {
             activeWeek = data.activeWeek;
-            document.getElementById('weekTaskTitle').textContent = `تكليف: ${data.subjectName} - ${activeWeek}`;
+            document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${data.subjectName} - ${activeWeek}`;
+
             if (data.deadline) {
                 startCountdown(data.deadline);
             }
@@ -69,7 +72,7 @@ function startCountdown(deadlineTimestamp) {
         if (distance < 0) {
             clearInterval(countdownInterval);
             deadlineDisplay.textContent = "انتهى الموعد ⌛";
-            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500">⚠️ عفواً يا مهندس، انتهى وقت التسليم</div>`;
+            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500 bg-red-50/50 rounded-[2rem]">⚠️ انتهى وقت تسليم هذا التكليف</div>`;
             return;
         }
 
@@ -82,22 +85,19 @@ function startCountdown(deadlineTimestamp) {
     }, 1000);
 }
 
-// --- 4. اختيار الصور ---
+// --- 4. اختيار وتحويل الصور (متوافق مع الهواتف) ---
 document.getElementById('imageInput').onchange = (e) => {
     selectedFiles = Array.from(e.target.files);
     const status = document.getElementById('fileStatus');
-    if(selectedFiles.length > 0) {
-        status.textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
-        status.classList.remove('hidden');
-    }
+    status.innerHTML = `✅ تم اختيار ${selectedFiles.length} صور`;
+    status.classList.remove('hidden');
 };
 
-// --- 5. تحويل الصور لـ PDF ---
 document.getElementById('convertBtn').onclick = async (e) => {
     e.preventDefault();
-    if (selectedFiles.length === 0) return alert("اختر الصور أولاً");
+    if (selectedFiles.length === 0) return alert("اختر الصور أولاً يا مهندس");
 
-    toggleOverlay(true, "جاري تحويل الصور... انتظر قليلاً");
+    toggleOverlay(true, "جاري دمج الصور في ملف PDF... ⏳");
 
     try {
         const { jsPDF } = window.jspdf;
@@ -106,22 +106,23 @@ document.getElementById('convertBtn').onclick = async (e) => {
         for (let i = 0; i < selectedFiles.length; i++) {
             const imgData = await readFile(selectedFiles[i]);
             if (i > 0) pdf.addPage();
-            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297);
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
         }
 
         currentPdfBlob = pdf.output('blob');
         const pdfUrl = URL.createObjectURL(currentPdfBlob);
 
-        // المعاينة
+        // منطقة المعاينة (فتح الملف في نافذة جديدة للهاتف)
         document.getElementById('pdfFrame').innerHTML = `
-            <div class="flex flex-col items-center justify-center h-full p-4 gap-4">
-                <p class="text-green-400 font-bold italic text-sm">تم تجهيز الملف بنجاح!</p>
-                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 px-6 py-3 rounded-xl font-bold">👁️ معاينة الملف المدمج</a>
+            <div class="flex flex-col items-center justify-center h-full gap-4 text-center p-4">
+                <span class="text-4xl">📄</span>
+                <p class="text-emerald-400 font-bold">تم تجهيز ملف PDF بنجاح!</p>
+                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg shadow-blue-500/20 hover:scale-105 transition-transform">فتح ومعاينة الملف 👁️</a>
+                <p class="text-[10px] text-slate-500 italic">يجب المعاينة للتأكد قبل الإرسال النهائي</p>
             </div>
         `;
         document.getElementById('previewArea').classList.remove('hidden');
         document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
-
     } catch (err) {
         alert("خطأ في المعالجة: " + err.message);
     } finally {
@@ -129,7 +130,7 @@ document.getElementById('convertBtn').onclick = async (e) => {
     }
 };
 
-// --- 6. الرفع النهائي ---
+// --- 5. الرفع النهائي (متوافق مع كود الأدمن) ---
 document.getElementById('finalSubmit').onclick = async () => {
     if (!currentPdfBlob) return;
     toggleOverlay(true, "جاري رفع التكليف للسيرفر... 🚀");
@@ -143,23 +144,24 @@ document.getElementById('finalSubmit').onclick = async () => {
         const result = await res.json();
 
         if (result.secure_url) {
-            const userKey = currentUser.uid || currentUser.academicIndex;
-            await set(ref(db, `submissions/${activeWeek}/${userKey}`), {
-                studentName: currentUser.fullName,
-                academicIndex: currentUser.academicIndex,
+            // التوافق مع الأدمن: استخدام الـ uid كفهرس في submissions
+            const uid = currentUser.uid || currentUser.academicIndex;
+
+            await set(ref(db, `submissions/${activeWeek}/${uid}`), {
+                studentName: currentUser.fullName || currentUser.name,
+                academicIndex: currentUser.academicIndex || currentUser.academicId,
                 fileUrl: result.secure_url,
                 submittedAt: new Date().toLocaleString('ar-EG'),
                 timestamp: new Date().getTime()
             });
 
-            alert("كفو يا مهندس! تم التسليم بنجاح ✅");
+            alert("كفو يا مهندس! تم تسليم التكليف بنجاح ✅");
             location.reload();
         } else {
-            console.error(result);
-            alert("فشل الرفع! السبب غالباً إعدادات Cloudinary: " + (result.error ? result.error.message : "خطأ مجهول"));
+            alert("فشل الرفع: تأكد من إعدادات Cloudinary (Unsigned Preset)");
         }
     } catch (e) {
-        alert("فشل الاتصال بالسيرفر. تأكد من الإنترنت.");
+        alert("حدث خطأ في الاتصال، تأكد من جودة الإنترنت.");
     } finally {
         toggleOverlay(false);
     }
@@ -167,10 +169,10 @@ document.getElementById('finalSubmit').onclick = async () => {
 
 // وظائف مساعدة
 function readFile(file) {
-    return new Promise(resolve => {
-        const reader = new FileReader();
-        reader.onload = (e) => resolve(e.target.result);
-        reader.readAsDataURL(file);
+    return new Promise(res => {
+        const r = new FileReader();
+        r.onload = (e) => res(e.target.result);
+        r.readAsDataURL(file);
     });
 }
 
@@ -180,6 +182,6 @@ function toggleOverlay(show, text) {
 }
 
 document.getElementById('logoutBtn').onclick = () => {
-    localStorage.clear();
+    localStorage.removeItem('user');
     location.reload();
 };
