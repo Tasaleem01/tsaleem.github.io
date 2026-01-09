@@ -1,3 +1,91 @@
+
+// أضف هذه المتغيرات في بداية ملف main.js
+let currentUserData = null;
+let deadlineTimestamp = null;
+
+if (page === "index.html" || page === "") {
+    onAuthStateChanged(auth, async (user) => {
+        if (!user) { window.location.href = "login.html"; return; }
+
+        // 1. جلب بيانات الطالب
+        const userSnap = await get(ref(db, `users/${user.uid}`));
+        if (!userSnap.exists()) {
+            document.body.innerHTML = "خطأ: حسابك غير مسجل في قاعدة البيانات.";
+            return;
+        }
+        currentUserData = userSnap.val();
+        document.getElementById('displayUserName').innerText = currentUserData.fullName;
+        document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
+        document.getElementById('displayCollege').innerText = currentUserData.college || 'غير محدد';
+        document.getElementById('initialLoader').classList.add('hidden');
+        document.getElementById('mainContent').classList.remove('hidden');
+
+        // 2. مراقبة إعدادات الأدمن (المادة والأسبوع)
+        onValue(ref(db, 'admin_settings'), (snap) => {
+            const settings = snap.val();
+            if (settings) {
+                currentWeek = settings.activeWeek;
+                currentSubject = settings.subjectName;
+                deadlineTimestamp = settings.deadline;
+
+                document.getElementById('weekTaskTitle').innerText = `تكليف مادة ${currentSubject}`;
+                document.getElementById('activeWeekLabel').innerText = `الأسبوع النشط: ${currentWeek}`;
+                
+                // التحقق من الموعد النهائي
+                if (deadlineTimestamp) {
+                    const now = new Date().getTime();
+                    const dlDate = new Date(deadlineTimestamp);
+                    document.getElementById('deadlineInfo').innerText = `آخر موعد للتسليم: ${dlDate.toLocaleString('ar-EG')}`;
+                    
+                    if (now > deadlineTimestamp) {
+                        document.getElementById('convertBtn').disabled = true;
+                        document.getElementById('convertBtn').innerText = "❌ انتهى موعد التسليم";
+                        document.getElementById('dropZone').style.pointerEvents = "none";
+                    }
+                }
+            }
+        });
+
+        // 3. مراقبة التنبيهات (إذا حذف الأدمن ملفه)
+        onValue(ref(db, `notifications/${user.uid}`), (snap) => {
+            if (snap.exists()) {
+                const notif = snap.val();
+                document.getElementById('notificationAlert').classList.remove('hidden');
+                document.getElementById('notifMessage').innerText = notif.message;
+            }
+        });
+    });
+}
+
+// منطق رفع الصور وتحويلها لـ PDF (مختصر)
+let selectedImages = [];
+document.getElementById('dropZone').onclick = () => document.getElementById('imageInput').click();
+document.getElementById('imageInput').onchange = (e) => {
+    selectedImages = Array.from(e.target.files);
+    document.getElementById('fileStatus').classList.remove('hidden');
+    document.getElementById('fileStatus').innerText = `تم اختيار ${selectedImages.length} صور`;
+};
+
+document.getElementById('convertBtn').onclick = async () => {
+    if (selectedImages.length === 0) return alert("اختر صور أولاً!");
+    
+    // إظهار شاشة المعالجة
+    document.getElementById('statusOverlay').classList.remove('hidden');
+    
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+    
+    // هنا يتم تحويل الصور (منطق مبسط)
+    // ... كود معالجة الصور وإضافتها لـ PDF ...
+
+    document.getElementById('statusOverlay').classList.add('hidden');
+    document.getElementById('previewArea').classList.remove('hidden');
+    document.getElementById('pdfFrame').innerHTML = `<p class="text-center text-emerald-400 mt-20">✅ جاهز للإرسال: ${currentUserData.fullName}.pdf</p>`;
+};
+
+// عند الضغط على إرسال نهائي، يتم الرفع إلى: submissions/week_x/uid
+
+
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
