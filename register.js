@@ -1,8 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
-import { getAuth, createUserWithEmailAndPassword, sendEmailVerification } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, reload } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
-// --- إعدادات Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -31,7 +30,7 @@ regForm.addEventListener('submit', async (e) => {
     const confirmPass = document.getElementById('regConfirm').value;
 
     if (password !== confirmPass) {
-        showMessage("خطأ: كلمات المرور غير متطابقة!", "bg-red-100 text-red-600 border-red-200");
+        showMessage("خطأ: كلمات المرور غير متطابقة!", "bg-red-100 text-red-600");
         return;
     }
 
@@ -40,18 +39,18 @@ regForm.addEventListener('submit', async (e) => {
         const userRef = ref(db, 'users/' + academicId);
         const snapshot = await get(userRef);
         if (snapshot.exists()) {
-            showMessage("عذراً، هذا الرقم الأكاديمي مسجل مسبقاً!", "bg-yellow-100 text-yellow-700 border-yellow-200");
+            showMessage("عذراً، هذا الرقم الأكاديمي مسجل مسبقاً!", "bg-yellow-100 text-yellow-700");
             return;
         }
 
-        // 2. إنشاء الحساب في Authentication
+        // 2. إنشاء الحساب
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 3. إرسال رابط التوثيق فوراً
+        // 3. إرسال رابط التوثيق
         await sendEmailVerification(user);
 
-        // 4. حفظ البيانات بمسميات تتوافق مع الآدمن (fullName)
+        // 4. حفظ البيانات في Database
         const userData = {
             fullName: name,
             email: email,
@@ -62,41 +61,49 @@ regForm.addEventListener('submit', async (e) => {
         };
         await set(userRef, userData);
 
-        // 5. حفظ البيانات في المتصفح للدخول الفوري
+        // 5. حفظ البيانات مؤقتاً في المتصفح
         localStorage.setItem('user', JSON.stringify(userData));
 
-        // عرض رسالة نجاح مع خيار إعادة الإرسال
+        // 6. عرض رسالة التوجيه للبريد مع زر التحقق
         regMessage.innerHTML = `
-            <div class="p-4 bg-green-50 text-green-700 border border-green-200 rounded-2xl">
-                <p class="font-bold">✅ تم إنشاء الحساب بنجاح!</p>
-                <p class="text-[11px] mt-1">أرسلنا رابط التفعيل لبريدك. يرجى تفقده.</p>
-                <button id="resendVerification" class="text-blue-600 underline text-[11px] font-bold mt-2 block mx-auto">لم يصلك الرابط؟ إعادة الإرسال</button>
+            <div class="p-6 bg-blue-50 border-2 border-blue-200 rounded-[2rem] text-center shadow-inner">
+                <p class="text-blue-800 font-bold text-lg">📧 خطوة واحدة متبقية!</p>
+                <p class="text-blue-600 text-sm mt-2">أرسلنا رابط التفعيل إلى:<br><b class="text-blue-900">${email}</b></p>
+                <p class="text-slate-500 text-[11px] mt-4">يرجى الضغط على الرابط في بريدك، ثم اضغط على الزر أدناه:</p>
+                
+                <button id="verifyBtn" class="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all">
+                    لقد قمت بالتفعيل، دخول الآن ✅
+                </button>
+
+                <button id="resendBtn" class="mt-3 text-blue-500 underline text-xs block mx-auto hover:text-blue-700">
+                    لم يصلني الرابط؟ إعادة إرسال
+                </button>
             </div>
         `;
         regMessage.classList.remove('hidden');
+        regForm.classList.add('hidden'); // إخفاء الفورم ليركز المستخدم على التفعيل
 
-        // تفعيل زر إعادة الإرسال
-        document.getElementById('resendVerification').onclick = async () => {
-            try {
-                await sendEmailVerification(auth.currentUser);
-                alert("تم إعادة إرسال رابط التوثيق لبريدك بنجاح ✅");
-            } catch (err) {
-                alert("يرجى الانتظار قليلاً قبل طلب إعادة الإرسال مرة أخرى.");
+        // زر التحقق من التفعيل والدخول
+        document.getElementById('verifyBtn').onclick = async () => {
+            await reload(auth.currentUser); // تحديث حالة المستخدم من السيرفر
+            if (auth.currentUser.emailVerified) {
+                alert("تم التوثيق بنجاح! جاري توجيهك للمنصة...");
+                window.location.href = 'index.html';
+            } else {
+                alert("⚠️ لم يتم تفعيل الحساب بعد. يرجى فتح بريدك والضغط على الرابط المرسل.");
             }
         };
 
-        // 6. التوجه للصفحة الرئيسية (index.html) بعد 4 ثوانٍ
-        setTimeout(() => {
-            window.location.href = 'index.html';
-        }, 4000);
+        // زر إعادة الإرسال
+        document.getElementById('resendBtn').onclick = async () => {
+            await sendEmailVerification(auth.currentUser);
+            alert("تم إعادة إرسال الرابط. تفقد بريدك (بما في ذلك ملف الـ Spam).");
+        };
 
     } catch (error) {
-        let errorMsg = "حدث خطأ في التسجيل، يرجى المحاولة لاحقاً";
-        if (error.code === 'auth/email-already-in-use') errorMsg = "هذا البريد الإلكتروني مسجل بالفعل!";
-        if (error.code === 'auth/invalid-email') errorMsg = "صيغة البريد الإلكتروني غير صحيحة";
-        
-        showMessage(errorMsg, "bg-red-100 text-red-600 border-red-200");
-        console.error(error);
+        let msg = "حدث خطأ أثناء التسجيل";
+        if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل!";
+        showMessage(msg, "bg-red-100 text-red-600");
     }
 });
 
