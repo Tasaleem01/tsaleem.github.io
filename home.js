@@ -25,7 +25,7 @@ let currentPdfBlob = null;
 let activeWeek = "week_1";
 let countdownInterval;
 
-// --- 2. التحقق من الهوية والتحميل الأولي ---
+// --- 2. التحقق من الهوية عند التحميل ---
 window.addEventListener('load', () => {
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
@@ -43,7 +43,7 @@ window.addEventListener('load', () => {
     document.getElementById('mainContent').classList.remove('hidden');
 });
 
-// --- 3. جلب إعدادات الإدارة ---
+// --- 3. إدارة التوقيت والإعدادات ---
 function loadAdminSettings() {
     onValue(ref(db, 'admin_settings'), (snapshot) => {
         const data = snapshot.val();
@@ -66,7 +66,7 @@ function startCountdown(deadlineTimestamp) {
         if (distance < 0) {
             clearInterval(countdownInterval);
             deadlineDisplay.textContent = "انتهى الموعد ⌛";
-            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500 bg-red-50/50 rounded-[2rem]">⚠️ انتهى وقت تسليم هذا التكليف</div>`;
+            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500 bg-red-50/50 rounded-[2rem]">⚠️ انتهى وقت التسليم</div>`;
             return;
         }
 
@@ -79,7 +79,7 @@ function startCountdown(deadlineTimestamp) {
     }, 1000);
 }
 
-// --- 4. معالجة الصور وتحويلها (السرعة القصوى هنا) ---
+// --- 4. معالجة الصور المتوازية (السرعة القصوى) ---
 document.getElementById('imageInput').onchange = (e) => {
     selectedFiles = Array.from(e.target.files);
     const status = document.getElementById('fileStatus');
@@ -91,32 +91,34 @@ document.getElementById('convertBtn').onclick = async (e) => {
     e.preventDefault();
     if (selectedFiles.length === 0) return alert("اختر الصور أولاً يا مهندس");
 
-    toggleOverlay(true, "جاري معالجة الصور وضغطها للرفع السريع... ⚡");
+    toggleOverlay(true, "جاري المعالجة البرقية... ⚡🚀");
 
     try {
         const { jsPDF } = window.jspdf;
+        // إنشاء PDF مع خاصية الضغط وتجاهل الدقة العالية غير الضرورية
         const pdf = new jsPDF({
             orientation: 'p',
             unit: 'mm',
             format: 'a4',
-            compress: true 
+            compress: true
         });
 
-        for (let i = 0; i < selectedFiles.length; i++) {
-            // ضغط وتصغير الصورة قبل إضافتها للـ PDF
-            const optimizedImg = await processImage(selectedFiles[i]);
+        // [سر السرعة]: معالجة جميع الصور في وقت واحد بدلاً من التوالي
+        const optimizedImages = await Promise.all(selectedFiles.map(file => processImageFast(file)));
+
+        optimizedImages.forEach((imgData, i) => {
             if (i > 0) pdf.addPage();
-            pdf.addImage(optimizedImg, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
-        }
+            pdf.addImage(imgData, 'JPEG', 0, 0, 210, 297, undefined, 'FAST');
+        });
 
         currentPdfBlob = pdf.output('blob');
         const pdfUrl = URL.createObjectURL(currentPdfBlob);
 
         document.getElementById('pdfFrame').innerHTML = `
             <div class="flex flex-col items-center justify-center h-full gap-4 text-center p-4">
-                <span class="text-4xl">🚀</span>
-                <p class="text-emerald-400 font-bold">تم ضغط الملف وتجهيزه بنجاح!</p>
-                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 transition-transform">معاينة الملف قبل الإرسال 👁️</a>
+                <span class="text-5xl">⚡</span>
+                <p class="text-emerald-400 font-bold">تم الضغط والتجهيز بسرعة فائقة!</p>
+                <a href="${pdfUrl}" target="_blank" class="bg-blue-600 text-white px-8 py-3 rounded-2xl font-bold shadow-lg hover:scale-105 transition-transform">معاينة سريعة 👁️</a>
             </div>
         `;
         document.getElementById('previewArea').classList.remove('hidden');
@@ -128,36 +130,34 @@ document.getElementById('convertBtn').onclick = async (e) => {
     }
 };
 
-// وظيفة ضغط الصور (تستخدم Canvas لتقليل الحجم)
-async function processImage(file) {
+// وظيفة المعالجة فائقة السرعة باستخدام Canvas
+async function processImageFast(file) {
     return new Promise((resolve) => {
         const reader = new FileReader();
+        reader.readAsDataURL(file);
         reader.onload = (e) => {
             const img = new Image();
+            img.src = e.target.result;
             img.onload = () => {
                 const canvas = document.createElement('canvas');
-                const MAX_WIDTH = 1200; // دقة كافية جداً للطباعة والقراءة
-                let width = img.width;
-                let height = img.height;
+                // عرض 1000px مثالي جداً لملفات التكليف (وضوح عالٍ وحجم ريشة)
+                const targetWidth = 1000;
+                const scaleFactor = targetWidth / img.width;
+                canvas.width = targetWidth;
+                canvas.height = img.height * scaleFactor;
 
-                if (width > MAX_WIDTH) {
-                    height *= MAX_WIDTH / width;
-                    width = MAX_WIDTH;
-                }
-                canvas.width = width;
-                canvas.height = height;
-                const ctx = canvas.getContext('2d');
-                ctx.drawImage(img, 0, 0, width, height);
-                // تصدير بجودة 70% لتقليل الحجم بشكل مذهل
-                resolve(canvas.toDataURL('image/jpeg', 0.7));
+                const ctx = canvas.getContext('2d', { alpha: false });
+                ctx.imageSmoothingEnabled = false; // زيادة سرعة المعالجة
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                
+                // جودة 0.6 توفر ضغطاً هائلاً دون تأثر وضوح الكتابة
+                resolve(canvas.toDataURL('image/jpeg', 0.6));
             };
-            img.src = e.target.result;
         };
-        reader.readAsDataURL(file);
     });
 }
 
-// --- 5. الرفع النهائي ---
+// --- 5. الرفع النهائي للسيرفر ---
 document.getElementById('finalSubmit').onclick = async () => {
     if (!currentPdfBlob) return;
     toggleOverlay(true, "جاري الرفع الصاروخي... 🚀");
@@ -181,10 +181,10 @@ document.getElementById('finalSubmit').onclick = async () => {
                 timestamp: new Date().getTime()
             });
 
-            alert("كفو! تم التسليم بنجاح ✅");
+            alert("كفو يا مهندس! تم التسليم بنجاح وبسرعة قياسية ✅");
             location.reload();
         } else {
-            alert("فشل الرفع، تأكد من إعدادات Cloudinary");
+            alert("فشل الرفع: تأكد من إعدادات Cloudinary");
         }
     } catch (e) {
         alert("حدث خطأ في الاتصال، تأكد من جودة الإنترنت.");
@@ -193,7 +193,7 @@ document.getElementById('finalSubmit').onclick = async () => {
     }
 };
 
-// وظائف مساعدة
+// وظائف التحكم في الواجهة
 function toggleOverlay(show, text) {
     const overlay = document.getElementById('statusOverlay');
     if(overlay) {
