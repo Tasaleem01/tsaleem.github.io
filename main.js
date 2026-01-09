@@ -1,8 +1,8 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
-import { getDatabase, ref, get, set, onValue, remove } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+import { getAuth, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- إعدادات Firebase ---
+// --- 1. الإعدادات الأساسية ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -19,55 +19,57 @@ const db = getDatabase(app);
 
 let currentWeek = "week_1";
 let currentSubject = "الكهرباء";
-let allSubmissions = []; 
+let allSubmissions = []; // لتخزين التسليمات
+let allUsers = {};       // لتخزين المسجلين
 const page = window.location.pathname.split("/").pop() || "index.html";
 
-// --- ⚙️ منطق الأدمن (admin.html) ---
+// --- 2. منطق صفحة الأدمن (admin.html) ---
 if (page === "admin.html") {
     onAuthStateChanged(auth, (user) => {
-        if (!user) { window.location.href = "login.html"; }
-        else {
-            // مراقبة الإعدادات
-            onValue(ref(db, 'admin_settings'), (snap) => {
-                if (snap.exists()) {
-                    const settings = snap.val();
-                    currentWeek = settings.activeWeek;
-                    currentSubject = settings.subjectName;
-                    const deadline = settings.deadline;
-                    
-                    document.getElementById('adminTitle').innerText = `لوحة تحكم | ${currentSubject}`;
-                    document.getElementById('activeWeekLabel').innerText = `الأسبوع: ${currentWeek}`;
-                    if(deadline) {
-                        const dateObj = new Date(deadline);
-                        document.getElementById('deadlineLabel').innerText = `الموعد النهائي: ${dateObj.toLocaleString('ar-EG')}`;
-                    }
-                    loadSubmissions();
+        if (!user) { window.location.href = "login.html"; return; }
+        
+        // جلب الإعدادات (المادة، الأسبوع، الموعد النهائي)
+        onValue(ref(db, 'admin_settings'), (snap) => {
+            if (snap.exists()) {
+                const settings = snap.val();
+                currentWeek = settings.activeWeek;
+                currentSubject = settings.subjectName;
+                const deadline = settings.deadline;
+                
+                document.getElementById('adminTitle').innerText = `لوحة تحكم | ${currentSubject}`;
+                document.getElementById('activeWeekLabel').innerText = `الأسبوع: ${currentWeek}`;
+                if(deadline) {
+                    document.getElementById('deadlineLabel').innerText = `الموعد النهائي: ${new Date(deadline).toLocaleString('ar-EG')}`;
                 }
-            });
+                loadSubmissions();
+            }
+        });
 
-            // إحصائيات الطلاب المسجلين
-            onValue(ref(db, 'users'), (snap) => {
-                document.getElementById('totalStudents').innerText = snap.exists() ? Object.keys(snap.val()).length : 0;
-            });
-        }
+        // جلب قائمة المستخدمين المسجلين
+        onValue(ref(db, 'users'), (snap) => {
+            if (snap.exists()) {
+                allUsers = snap.val();
+                document.getElementById('totalStudents').innerText = Object.keys(allUsers).length;
+            }
+        });
     });
 
-    // تحميل وعرض التسليمات
+    // تحميل وعرض جدول التسليمات
     function loadSubmissions() {
         onValue(ref(db, `submissions/${currentWeek}`), (snap) => {
             const tableBody = document.getElementById('adminTableBody');
             if (snap.exists()) {
                 allSubmissions = Object.entries(snap.val());
-                renderTable(allSubmissions);
+                renderMainTable(allSubmissions);
                 document.getElementById('weekSubmissions').innerText = allSubmissions.length;
             } else {
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-slate-500 italic font-bold text-lg">لا توجد تسليمات للأسبوع الحالي حتى الآن 💨</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-20 text-center text-slate-500 font-bold">لا توجد تسليمات لهذا الأسبوع 💨</td></tr>`;
                 document.getElementById('weekSubmissions').innerText = "0";
             }
         });
     }
 
-    function renderTable(data) {
+    function renderMainTable(data) {
         const tableBody = document.getElementById('adminTableBody');
         tableBody.innerHTML = "";
         data.forEach(([uid, sub]) => {
@@ -77,140 +79,159 @@ if (page === "admin.html") {
                     <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
                     <td class="p-4 text-[10px] text-slate-500">${sub.submittedAt}</td>
                     <td class="p-4 flex justify-center gap-2">
-                        <a href="${sub.fileUrl}" target="_blank" class="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold border border-blue-600/20 hover:bg-blue-600 hover:text-white transition-all">فتح PDF</a>
-                        <button onclick="deleteSubmission('${uid}', '${sub.studentName}')" class="bg-red-600/10 text-red-400 px-4 py-2 rounded-xl text-xs font-bold border border-red-600/20 hover:bg-red-600 hover:text-white transition-all">حذف</button>
+                        <a href="${sub.fileUrl}" target="_blank" class="bg-blue-600/10 text-blue-400 px-4 py-2 rounded-xl text-xs font-bold border border-blue-600/20 hover:bg-blue-600 transition-all">فتح PDF</a>
+                        <button onclick="deleteSubmission('${uid}', '${sub.studentName}')" class="bg-red-600/10 text-red-400 px-4 py-2 rounded-xl text-xs font-bold border border-red-600/20 hover:bg-red-500 hover:text-white transition-all">حذف الملف</button>
                     </td>
                 </tr>`;
         });
     }
 
-    // البحث الفوري
+    // --- 🔍 ميزة البحث ---
     document.getElementById('searchInput')?.addEventListener('input', (e) => {
         const term = e.target.value.toLowerCase();
         const filtered = allSubmissions.filter(([uid, sub]) => 
             sub.studentName.toLowerCase().includes(term) || sub.academicIndex.includes(term)
         );
-        renderTable(filtered);
+        renderMainTable(filtered);
     });
 
-    // الحذف وإرسال التنبيه
-    window.deleteSubmission = async (uid, name) => {
-        if (confirm(`هل أنت متأكد من حذف تسليم المهندس: ${name}؟`)) {
-            try {
-                await set(ref(db, `submissions/${currentWeek}/${uid}`), null);
-                await set(ref(db, `notifications/${uid}`), {
-                    message: `تم حذف ملفك (${currentSubject}) - (${currentWeek}). يرجى إعادة رفعه مرة أخرى.`,
-                    timestamp: new Date().getTime()
-                });
-                alert("تم الحذف وتنبيه الطالب.");
-            } catch (e) { alert("خطأ: " + e.message); }
+    // --- 👥 ميزة إدارة الطلاب (المسجلين / غير المسجلين) ---
+    window.openStudentsModal = () => {
+        const listArea = document.getElementById('studentsListArea');
+        listArea.innerHTML = "";
+        document.getElementById('studentsModal').classList.remove('hidden');
+
+        const submittedUIDs = allSubmissions.map(item => item[0]); 
+        let done = 0, pending = 0;
+
+        Object.entries(allUsers).forEach(([uid, user]) => {
+            const hasSub = submittedUIDs.includes(uid);
+            hasSub ? done++ : pending++;
+
+            listArea.innerHTML += `
+                <div class="flex items-center justify-between p-4 bg-slate-900/40 border border-slate-700/50 rounded-2xl">
+                    <div class="flex items-center gap-3">
+                        <div class="w-3 h-3 rounded-full ${hasSub ? 'bg-emerald-500 shadow-[0_0_10px_emerald]' : 'bg-red-500'}"></div>
+                        <div>
+                            <p class="font-bold text-sm">${user.fullName}</p>
+                            <p class="text-[10px] text-slate-500 font-mono">${user.academicIndex} | ${user.college}</p>
+                        </div>
+                    </div>
+                    <div class="flex items-center gap-3">
+                        <span class="text-[9px] font-black px-2 py-1 rounded ${hasSub ? 'bg-emerald-500/20 text-emerald-400' : 'bg-red-500/20 text-red-400'}">${hasSub ? 'تم التسليم' : 'لم يسلم'}</span>
+                        <button onclick="deleteUserAccount('${uid}', '${user.fullName}')" class="p-2 hover:bg-red-500/20 text-red-500 rounded-lg transition-all">🗑️</button>
+                    </div>
+                </div>`;
+        });
+        document.getElementById('countDone').innerText = done;
+        document.getElementById('countPending').innerText = pending;
+    };
+
+    window.closeStudentsModal = () => document.getElementById('studentsModal').classList.add('hidden');
+
+    // حذف حساب مستخدم نهائياً
+    window.deleteUserAccount = async (uid, name) => {
+        if (confirm(`⚠️ هل أنت متأكد من حذف حساب الطالب "${name}"؟ لن يتمكن من دخول الموقع وسيتم مسح بياناته.`)) {
+            await set(ref(db, `users/${uid}`), null);
+            await set(ref(db, `submissions/${currentWeek}/${uid}`), null);
+            alert("تم الحذف بنجاح.");
+            openStudentsModal(); // تحديث القائمة فوراً
         }
     };
 
-    // وظائف النافذة المنبثقة (Modal)
+    // حذف تسليم ملف مع تنبيه الطالب
+    window.deleteSubmission = async (uid, name) => {
+        if (confirm(`حذف ملف المهندس: ${name}؟`)) {
+            await set(ref(db, `submissions/${currentWeek}/${uid}`), null);
+            await set(ref(db, `notifications/${uid}`), {
+                message: `تم حذف ملفك (${currentSubject}) - (${currentWeek}). يرجى إعادة الرفع بجودة أفضل.`,
+                timestamp: new Date().getTime()
+            });
+            alert("تم حذف الملف وإبلاغ الطالب.");
+        }
+    };
+
+    // --- ⚙️ الإعدادات ---
     window.openSettings = () => {
         document.getElementById('setSubject').value = currentSubject;
         document.getElementById('setWeek').value = currentWeek;
         document.getElementById('settingsModal').classList.remove('hidden');
     };
     window.closeSettings = () => document.getElementById('settingsModal').classList.add('hidden');
-
     window.saveSettings = () => {
-        const subject = document.getElementById('setSubject').value;
-        const week = document.getElementById('setWeek').value;
-        const deadline = document.getElementById('setDeadline').value; // التقاط قيمة datetime-local
-
-        if (subject && week) {
-            const settingsUpdate = {
-                activeWeek: week,
-                subjectName: subject,
-                deadline: deadline ? new Date(deadline).getTime() : null
-            };
-            set(ref(db, 'admin_settings'), settingsUpdate).then(() => {
-                closeSettings();
-                alert("تم حفظ الإعدادات بنجاح ✅");
-            });
+        const sub = document.getElementById('setSubject').value;
+        const wk = document.getElementById('setWeek').value;
+        const dl = document.getElementById('setDeadline').value;
+        if (sub && wk) {
+            set(ref(db, 'admin_settings'), {
+                activeWeek: wk,
+                subjectName: sub,
+                deadline: dl ? new Date(dl).getTime() : null
+            }).then(() => { closeSettings(); alert("تم التحديث ✅"); });
         }
     };
 
-    // وظيفة تحميل ملف الـ ZIP
+    // --- 📦 تحميل ZIP ---
     document.getElementById('downloadZipBtn').onclick = async () => {
-        if (allSubmissions.length === 0) return alert("لا توجد ملفات حالياً");
-        
+        if (allSubmissions.length === 0) return alert("لا توجد تسليمات");
         const btn = document.getElementById('downloadZipBtn');
-        const originalText = btn.innerHTML;
-        btn.innerHTML = `<span class="text-2xl animate-spin">⏳</span><span class="font-bold">جاري التجميع...</span>`;
         btn.disabled = true;
-
         const zip = new JSZip();
         const folder = zip.folder(`${currentSubject}-${currentWeek}`);
-
-        try {
-            const downloadPromises = allSubmissions.map(async ([uid, sub]) => {
-                try {
-                    const response = await fetch(sub.fileUrl);
-                    const blob = await response.blob();
-                    const fileName = `${sub.studentName.replace(/\s+/g, '_')}-${sub.academicIndex}.pdf`;
-                    folder.file(fileName, blob);
-                } catch (e) { console.error("Error downloading student file", sub.studentName); }
-            });
-
-            await Promise.all(downloadPromises);
-            const content = await zip.generateAsync({ type: "blob" });
-            saveAs(content, `${currentSubject}-${currentWeek}.zip`);
-        } catch (e) { alert("خطأ في التحميل: " + e.message); }
-        finally {
-            btn.innerHTML = originalText;
-            btn.disabled = false;
-        }
+        
+        const promises = allSubmissions.map(async ([uid, sub]) => {
+            const res = await fetch(sub.fileUrl);
+            const blob = await res.blob();
+            folder.file(`${sub.studentName.replace(/\s+/g, '_')}-${sub.academicIndex}.pdf`, blob);
+        });
+        
+        await Promise.all(promises);
+        const content = await zip.generateAsync({ type: "blob" });
+        saveAs(content, `${currentSubject}-${currentWeek}.zip`);
+        btn.disabled = false;
     };
 }
 
-// --- 🏠 منطق الطالب (index.html) ---
+// --- 3. منطق صفحة الطالب (index.html) ---
 if (page === "index.html" || page === "") {
     onAuthStateChanged(auth, async (user) => {
         if (!user) { window.location.href = "login.html"; return; }
         
-        // 1. مراقبة التنبيهات (إذا حذف الأدمن ملف)
-        onValue(ref(db, `notifications/${user.uid}`), (nSnap) => {
-            if (nSnap.exists()) {
-                const notify = nSnap.val();
-                const notifyArea = document.getElementById('notifyArea'); // تأكد من وجود div بهذا الـ id في index.html
+        // 1. فحص التنبيهات (لو الأدمن حذف ملفه)
+        onValue(ref(db, `notifications/${user.uid}`), (snap) => {
+            if (snap.exists()) {
+                const notify = snap.val();
+                const notifyArea = document.getElementById('notifyArea');
                 if (notifyArea) {
-                    notifyArea.innerHTML = `
-                        <div class="bg-red-600/20 text-red-400 p-4 rounded-2xl mb-4 border border-red-500/30 font-bold flex justify-between items-center">
-                            <span>⚠️ ${notify.message}</span>
-                            <button onclick="this.parentElement.remove()" class="text-xl">&times;</button>
-                        </div>`;
+                    notifyArea.innerHTML = `<div class="bg-red-600 text-white p-4 rounded-2xl mb-4 font-bold shadow-lg animate-pulse flex justify-between">
+                        <span>⚠️ ${notify.message}</span>
+                        <button onclick="this.parentElement.remove()">✕</button>
+                    </div>`;
                 }
             }
         });
 
-        // 2. فحص الموعد النهائي (الإغلاق التلقائي)
-        onValue(ref(db, 'admin_settings'), (s) => {
-            if (s.exists()) {
-                const settings = s.val();
-                const deadline = settings.deadline;
+        // 2. فحص الموعد النهائي (إغلاق الرفع)
+        onValue(ref(db, 'admin_settings'), (snap) => {
+            if (snap.exists()) {
+                const { deadline } = snap.val();
                 const now = new Date().getTime();
-                const openAgain = deadline + (1.5 * 24 * 60 * 60 * 1000); // يفتح بعد يوم ونصف
+                const reopenTime = deadline + (1.5 * 24 * 60 * 60 * 1000); // يفتح بعد 36 ساعة
 
-                if (deadline && now > deadline && now < openAgain) {
-                    const content = document.getElementById('mainContent');
-                    if (content) {
-                        content.innerHTML = `
-                            <div class="p-10 text-center bg-slate-800 rounded-[3rem] border border-red-500/20 shadow-2xl">
-                                <div class="text-6xl mb-4">🛑</div>
-                                <h2 class="text-2xl font-bold text-red-500 mb-2">عفواً، باب التسليم مغلق</h2>
-                                <p class="text-slate-400">لقد انتهى الموعد النهائي لهذا الأسبوع. سيتم فتح الموقع تلقائياً بعد تصحيح الملفات.</p>
-                            </div>`;
-                    }
+                if (deadline && now > deadline && now < reopenTime) {
+                    const main = document.getElementById('mainContent');
+                    if(main) main.innerHTML = `<div class="p-10 text-center bg-slate-800 rounded-[3rem] border border-red-500/20 shadow-2xl">
+                        <div class="text-7xl mb-6">🛑</div>
+                        <h2 class="text-2xl font-black text-red-500 mb-3">التسليم مغلق حالياً</h2>
+                        <p class="text-slate-400 font-bold">انتهى الموعد النهائي لهذا الأسبوع. سيفتح الموقع تلقائياً لاحقاً.</p>
+                    </div>`;
                 }
             }
         });
     });
 }
 
-// زر الخروج
+// تسجيل الخروج
 document.getElementById('logoutBtn')?.addEventListener('click', () => {
     signOut(auth).then(() => window.location.href = "login.html");
 });
