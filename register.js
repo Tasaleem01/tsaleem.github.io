@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getDatabase, ref, set, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 import { getAuth, createUserWithEmailAndPassword, sendEmailVerification, reload } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 
+// --- إعدادات Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -17,7 +18,6 @@ const db = getDatabase(app);
 const auth = getAuth(app);
 
 const regForm = document.getElementById('regForm');
-const regMessage = document.getElementById('regMessage');
 
 regForm.addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -27,88 +27,90 @@ regForm.addEventListener('submit', async (e) => {
     const academicId = document.getElementById('regIndex').value;
     const college = document.getElementById('regCollege').value;
     const password = document.getElementById('regPass').value;
-    const confirmPass = document.getElementById('regConfirm').value;
-
-    if (password !== confirmPass) {
-        showMessage("خطأ: كلمات المرور غير متطابقة!", "bg-red-100 text-red-600");
-        return;
-    }
 
     try {
-        // 1. التحقق من الرقم الجامعي في Database
-        const userRef = ref(db, 'users/' + academicId);
-        const snapshot = await get(userRef);
-        if (snapshot.exists()) {
-            showMessage("عذراً، هذا الرقم الأكاديمي مسجل مسبقاً!", "bg-yellow-100 text-yellow-700");
-            return;
-        }
-
-        // 2. إنشاء الحساب
+        // 1. إنشاء الحساب
         const userCredential = await createUserWithEmailAndPassword(auth, email, password);
         const user = userCredential.user;
 
-        // 3. إرسال رابط التوثيق
+        // 2. إرسال رابط التوثيق
         await sendEmailVerification(user);
 
-        // 4. حفظ البيانات في Database
+        // 3. حفظ البيانات في Database لضمان ظهورها للآدمن
         const userData = {
             fullName: name,
             email: email,
             academicIndex: academicId,
             college: college,
-            uid: user.uid,
-            createdAt: new Date().toISOString()
+            uid: user.uid
         };
-        await set(userRef, userData);
-
-        // 5. حفظ البيانات مؤقتاً في المتصفح
+        await set(ref(db, 'users/' + academicId), userData);
         localStorage.setItem('user', JSON.stringify(userData));
 
-        // 6. عرض رسالة التوجيه للبريد مع زر التحقق
-        regMessage.innerHTML = `
-            <div class="p-6 bg-blue-50 border-2 border-blue-200 rounded-[2rem] text-center shadow-inner">
-                <p class="text-blue-800 font-bold text-lg">📧 خطوة واحدة متبقية!</p>
-                <p class="text-blue-600 text-sm mt-2">أرسلنا رابط التفعيل إلى:<br><b class="text-blue-900">${email}</b></p>
-                <p class="text-slate-500 text-[11px] mt-4">يرجى الضغط على الرابط في بريدك، ثم اضغط على الزر أدناه:</p>
-                
-                <button id="verifyBtn" class="mt-4 w-full bg-blue-600 text-white py-3 rounded-xl font-bold shadow-lg hover:bg-blue-700 transition-all">
-                    لقد قمت بالتفعيل، دخول الآن ✅
-                </button>
-
-                <button id="resendBtn" class="mt-3 text-blue-500 underline text-xs block mx-auto hover:text-blue-700">
-                    لم يصلني الرابط؟ إعادة إرسال
-                </button>
-            </div>
-        `;
-        regMessage.classList.remove('hidden');
-        regForm.classList.add('hidden'); // إخفاء الفورم ليركز المستخدم على التفعيل
-
-        // زر التحقق من التفعيل والدخول
-        document.getElementById('verifyBtn').onclick = async () => {
-            await reload(auth.currentUser); // تحديث حالة المستخدم من السيرفر
-            if (auth.currentUser.emailVerified) {
-                alert("تم التوثيق بنجاح! جاري توجيهك للمنصة...");
-                window.location.href = 'index.html';
-            } else {
-                alert("⚠️ لم يتم تفعيل الحساب بعد. يرجى فتح بريدك والضغط على الرابط المرسل.");
-            }
-        };
-
-        // زر إعادة الإرسال
-        document.getElementById('resendBtn').onclick = async () => {
-            await sendEmailVerification(auth.currentUser);
-            alert("تم إعادة إرسال الرابط. تفقد بريدك (بما في ذلك ملف الـ Spam).");
-        };
+        // 4. إظهار الـ Modal
+        showVerificationModal(email);
 
     } catch (error) {
-        let msg = "حدث خطأ أثناء التسجيل";
-        if (error.code === 'auth/email-already-in-use') msg = "هذا البريد مسجل بالفعل!";
-        showMessage(msg, "bg-red-100 text-red-600");
+        alert("خطأ أثناء التسجيل: " + error.message);
     }
 });
 
-function showMessage(text, style) {
-    regMessage.textContent = text;
-    regMessage.className = `block text-center font-bold p-4 rounded-2xl text-sm mt-4 ${style}`;
-    regMessage.classList.remove('hidden');
+function showVerificationModal(email) {
+    // إنشاء عنصر المودل برمجياً لضمان عدم تداخل التنسيقات
+    const modalHtml = `
+    <div id="authModal" class="fixed inset-0 bg-slate-900/80 backdrop-blur-sm flex items-center justify-center z-[9999] p-4">
+        <div class="bg-white rounded-[2.5rem] w-full max-w-md p-8 shadow-2xl animate-in fade-in zoom-in duration-300">
+            <div class="text-center">
+                <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-6 text-4xl">📧</div>
+                <h3 class="text-2xl font-bold text-slate-800">تفقد بريدك الإلكتروني</h3>
+                <p class="text-slate-500 mt-3 text-sm leading-relaxed">
+                    لقد أرسلنا رابط توثيق إلى البريد: <br>
+                    <span class="font-bold text-slate-800">${email}</span>
+                </p>
+                
+                <div class="mt-6 p-4 bg-amber-50 border border-amber-100 rounded-2xl text-amber-700 text-xs flex items-start gap-3 text-right">
+                    <span>💡</span>
+                    <p>إذا لم تجد الرسالة في صندوق الوارد، يرجى التحقق من مجلد <b>الرسائل غير المرغوب فيها (Spam)</b> أو <b>العروض الترويجية</b>.</p>
+                </div>
+
+                <div class="space-y-3 mt-8">
+                    <button id="confirmVerifyBtn" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold text-lg hover:bg-blue-700 shadow-lg active:scale-95 transition-all">
+                        لقد ضغطت على الرابط، دخول ✅
+                    </button>
+                    
+                    <button id="resendLinkBtn" class="text-slate-400 text-xs font-bold hover:text-blue-600 transition-colors">
+                        لم يصلني الرابط؟ إعادة إرسال
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>`;
+
+    document.body.insertAdjacentHTML('beforeend', modalHtml);
+
+    // برمجة زر التحقق اللحظي
+    document.getElementById('confirmVerifyBtn').onclick = async () => {
+        const btn = document.getElementById('confirmVerifyBtn');
+        btn.innerHTML = "جاري التحقق... ⏳";
+        
+        await reload(auth.currentUser); // تحديث الحالة من سيرفر Firebase
+        
+        if (auth.currentUser.emailVerified) {
+            alert("تم التوثيق بنجاح! أهلاً بك يا مهندس.");
+            window.location.href = 'index.html'; // التوجه لصفحة المنصة
+        } else {
+            btn.innerHTML = "لقد ضغطت على الرابط، دخول ✅";
+            alert("⚠️ عذراً، لم يتم تفعيل الحساب بعد. يرجى الضغط على الرابط المرسل لبريدك أولاً.");
+        }
+    };
+
+    // برمجة زر إعادة الإرسال
+    document.getElementById('resendLinkBtn').onclick = async () => {
+        try {
+            await sendEmailVerification(auth.currentUser);
+            alert("تم إعادة إرسال رابط التوثيق بنجاح ✅");
+        } catch (e) {
+            alert("يرجى الانتظار قليلاً قبل محاولة إعادة الإرسال مرة أخرى.");
+        }
+    };
 }
