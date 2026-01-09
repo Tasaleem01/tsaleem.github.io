@@ -1,142 +1,85 @@
-import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الرئيسية | منصة تسليم التكليفات</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
+        body { font-family: 'Cairo', sans-serif; scroll-behavior: smooth; }
+        .loader-screen { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
+        .spinner { width: 50px; height: 50px; border: 5px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .progress-container { width: 100%; background-color: #1e293b; border-radius: 999px; height: 8px; margin-top: 15px; overflow: hidden; }
+        #progressBar { width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease-in-out; }
+    </style>
+</head>
+<body class="bg-slate-900 text-white min-h-screen">
 
-// --- 1. إعدادات Firebase و Cloudinary ---
-const firebaseConfig = {
-    apiKey: "YOUR_API_KEY",
-    authDomain: "YOUR_AUTH_DOMAIN",
-    databaseURL: "YOUR_DATABASE_URL",
-    projectId: "YOUR_PROJECT_ID",
-    storageBucket: "YOUR_STORAGE_BUCKET",
-    appId: "YOUR_APP_ID"
-};
+    <div id="initialLoader" class="loader-screen">
+        <div class="spinner"></div>
+        <p class="mt-4 text-blue-400 font-bold italic">جاري التحقق من الهوية... انتظر يا مهندس</p>
+    </div>
 
-const CLOUDINARY_URL = "https://api.cloudinary.com/v1_1/YOUR_CLOUD_NAME/upload";
-const CLOUDINARY_PRESET = "YOUR_UNSIGNED_PRESET";
+    <div id="accessDenied" class="hidden min-h-screen flex flex-col items-center justify-center p-6 text-center">
+        <div class="text-8xl mb-6">🚫</div>
+        <h1 class="text-3xl font-bold text-white mb-4">عفواً، أنت لست مسجلاً</h1>
+        <p class="text-slate-400 mb-8 max-w-md">يجب إنشاء حساب أولاً لتتمكن من رفع التكليفات.</p>
+        <a href="register.html" class="bg-blue-600 text-white px-10 py-4 rounded-2xl font-bold shadow-xl hover:bg-blue-500 transition-all">إنشاء حساب جديد</a>
+    </div>
 
-const app = initializeApp(firebaseConfig);
-const db = getDatabase(app);
+    <div id="mainContent" class="hidden">
+        <header class="bg-slate-800/50 border-b border-slate-700 sticky top-0 z-40 backdrop-blur-md p-4">
+            <div class="max-w-5xl mx-auto flex justify-between items-center">
+                <div class="flex items-center gap-3">
+                    <div class="bg-blue-600 w-10 h-10 rounded-xl flex items-center justify-center font-bold">🎓</div>
+                    <div>
+                        <h2 class="text-sm md:text-lg font-bold">نرحب بك يا مهندس/ <span id="displayUserName" class="text-blue-400">...</span></h2>
+                        <div class="flex gap-4 text-[10px] font-bold text-slate-400">
+                            <span>ID: <span id="displayIndex" class="text-slate-300">...</span></span>
+                            <span>الكلية: <span id="displayCollege" class="text-slate-300">...</span></span>
+                        </div>
+                    </div>
+                </div>
+                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 px-4 py-2 rounded-xl text-xs font-bold hover:bg-red-600 hover:text-white transition-all">خروج</button>
+            </div>
+        </header>
 
-// --- 2. متغيرات الحالة ---
-let selectedFiles = [];
-let currentUser = JSON.parse(localStorage.getItem('user'));
-let currentPdfBlob = null;
+        <main class="max-w-3xl mx-auto p-4 mt-8 pb-20">
+            <div id="uploadCard" class="bg-slate-800/50 rounded-[2.5rem] p-6 md:p-10 border border-slate-700 shadow-2xl">
+                <div class="mb-8 text-right">
+                    <h3 id="weekTaskTitle" class="text-xl md:text-2xl font-black text-white mb-2 italic">جاري تحميل البيانات...</h3>
+                    <p id="deadlineInfo" class="text-xs text-red-400 font-bold italic">الموعد النهائي: <span id="deadlineDate">--:--</span></p>
+                </div>
 
-// --- 3. التشغيل عند تحميل الصفحة ---
-document.addEventListener('DOMContentLoaded', () => {
-    if (!currentUser) {
-        document.getElementById('initialLoader').classList.add('hidden');
-        document.getElementById('accessDenied').classList.remove('hidden');
-        return;
-    }
+                <div id="dropZone" onclick="document.getElementById('imageInput').click()" class="border-2 border-dashed border-slate-700 rounded-[2.5rem] p-10 md:p-16 text-center hover:border-blue-500 hover:bg-blue-500/5 cursor-pointer transition-all group">
+                    <input type="file" id="imageInput" multiple accept="image/*" class="hidden">
+                    <div class="text-6xl mb-4 group-hover:scale-110 transition-transform">📸</div>
+                    <p class="text-lg font-bold text-slate-300 italic">اضغط هنا لاختيار صور الواجب</p>
+                    <div id="fileStatus" class="mt-4 inline-block px-4 py-2 bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 rounded-full text-xs font-bold hidden"></div>
+                </div>
 
-    // إظهار المحتوى
-    document.getElementById('initialLoader').classList.add('hidden');
-    document.getElementById('mainContent').classList.remove('hidden');
-    
-    // عرض بيانات المستخدم
-    document.getElementById('displayUserName').textContent = currentUser.name;
-    document.getElementById('displayIndex').textContent = currentUser.academicId;
-    document.getElementById('displayCollege').textContent = currentUser.college;
+                <button id="convertBtn" class="w-full mt-8 bg-blue-600 text-white py-5 rounded-[1.5rem] font-black text-lg hover:bg-blue-500 transition-all shadow-lg">تحويل الصور ومعاينة الـ PDF 📄</button>
 
-    loadSettings();
-});
+                <div id="previewArea" class="hidden mt-10 space-y-4 text-right">
+                    <h4 class="font-bold text-blue-400">👁️ معاينة الملف النهائي:</h4>
+                    <div id="pdfFrame" class="w-full h-[500px] bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-700"></div>
+                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-lg hover:bg-emerald-500 transition-all shadow-xl">إرسال الملف النهائي لليدر 🚀</button>
+                </div>
+            </div>
+        </main>
+    </div>
 
-// --- 4. جلب إعدادات الآدمن ---
-function loadSettings() {
-    const settingsRef = ref(db, 'systemSettings');
-    onValue(settingsRef, (snapshot) => {
-        const data = snapshot.val();
-        if (data) {
-            document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${data.subject} - ${data.week}`;
-            document.getElementById('deadlineDate').textContent = new Date(data.deadline).toLocaleString('ar-EG');
-            
-            if (new Date() > new Date(data.deadline)) {
-                document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-red-400 font-bold">⚠️ انتهى وقت التسليم!</div>`;
-            }
-        }
-    });
-}
+    <div id="statusOverlay" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6 text-center">
+        <div class="bg-slate-800 border border-slate-700 p-10 rounded-[3rem] max-w-sm w-full shadow-2xl">
+            <div class="spinner mx-auto mb-6"></div>
+            <p id="statusText" class="text-lg font-bold text-white italic">جاري المعالجة...</p>
+            <div class="progress-container"><div id="progressBar"></div></div>
+        </div>
+    </div>
 
-// --- 5. التعامل مع الصور وتحويلها لـ PDF ---
-document.getElementById('imageInput').addEventListener('change', (e) => {
-    selectedFiles = Array.from(e.target.files);
-    const status = document.getElementById('fileStatus');
-    status.textContent = `تم اختيار ${selectedFiles.length} صور`;
-    status.classList.remove('hidden');
-});
-
-document.getElementById('convertBtn').addEventListener('click', async () => {
-    if (selectedFiles.length === 0) return alert("الرجاء اختيار صور");
-    
-    toggleOverlay(true, "جاري إنشاء ملف PDF...");
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-
-    for (let i = 0; i < selectedFiles.length; i++) {
-        const imgData = await readFile(selectedFiles[i]);
-        if (i > 0) pdf.addPage();
-        pdf.addImage(imgData, 'JPEG', 10, 10, 190, 280);
-        updateProgress(((i + 1) / selectedFiles.length) * 100);
-    }
-
-    currentPdfBlob = pdf.output('blob');
-    const pdfUrl = URL.createObjectURL(currentPdfBlob);
-    document.getElementById('pdfFrame').innerHTML = `<embed src="${pdfUrl}" width="100%" height="100%" />`;
-    document.getElementById('previewArea').classList.remove('hidden');
-    toggleOverlay(false);
-});
-
-// --- 6. الرفع النهائي ---
-document.getElementById('finalSubmit').addEventListener('click', async () => {
-    toggleOverlay(true, "جاري رفع الملف للسيرفر...");
-    
-    const formData = new FormData();
-    formData.append('file', currentPdfBlob);
-    formData.append('upload_preset', CLOUDINARY_PRESET);
-
-    try {
-        const res = await fetch(CLOUDINARY_URL, { method: 'POST', body: formData });
-        const data = await res.json();
-
-        if (data.secure_url) {
-            await set(ref(db, `submissions/${currentUser.academicId}`), {
-                name: currentUser.name,
-                academicId: currentUser.academicId,
-                pdfUrl: data.secure_url,
-                time: new Date().toISOString()
-            });
-            alert("تم التسليم بنجاح!");
-            location.reload();
-        }
-    } catch (err) {
-        alert("فشل الرفع، تأكد من اتصالك");
-    } finally {
-        toggleOverlay(false);
-    }
-});
-
-// دالة تسجيل الخروج
-document.getElementById('logoutBtn').addEventListener('click', () => {
-    localStorage.removeItem('user');
-    location.reload();
-});
-
-// وظائف مساعدة
-function readFile(file) {
-    return new Promise(res => {
-        const r = new FileReader();
-        r.onload = (e) => res(e.target.result);
-        r.readAsDataURL(file);
-    });
-}
-
-function toggleOverlay(show, text = "") {
-    const ov = document.getElementById('statusOverlay');
-    ov.classList.toggle('hidden', !show);
-    document.getElementById('statusText').textContent = text;
-}
-
-function updateProgress(p) {
-    document.getElementById('progressBar').style.width = p + '%';
-}
+    <script type="module" src="home.js"></script>
+</body>
+</html>
