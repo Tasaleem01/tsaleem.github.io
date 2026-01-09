@@ -1,5 +1,5 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
-import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword, sendPasswordResetEmail } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
+import { getAuth, onAuthStateChanged, signOut, createUserWithEmailAndPassword, sendEmailVerification, signInWithEmailAndPassword } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get, set, onValue } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
 // --- 1. إعدادات الخدمات ---
@@ -23,11 +23,11 @@ const db = getDatabase(app);
 
 let currentUserData = null;
 let finalPdfBlob = null;
-let currentWeek = "week_1"; // القيمة الافتراضية
+let currentWeek = "week_1"; 
 let currentSubject = "الكهرباء";
 const page = window.location.pathname.split("/").pop() || "index.html";
 
-// --- 2. منطق صفحة التسجيل والدخول ---
+// --- 2. منطق الحسابات (تسجيل ودخول) ---
 if (page === "register.html") {
     const regForm = document.getElementById('regForm');
     if (regForm) {
@@ -63,7 +63,7 @@ if (page === "login.html") {
     }
 }
 
-// --- 3. منطق الصفحة الرئيسية (الطالب) ---
+// --- 3. منطق صفحة الطالب (index.html) ---
 if (page === "index.html" || page === "") {
     onAuthStateChanged(auth, async (user) => {
         if (user) {
@@ -75,7 +75,6 @@ if (page === "index.html" || page === "") {
                 document.getElementById('displayIndex').innerText = currentUserData.academicIndex;
                 document.getElementById('displayCollege').innerText = currentUserData.college;
                 document.getElementById('mainContent').classList.remove('hidden');
-                // جلب إعدادات الأسبوع الحالية للرفع
                 onValue(ref(db, 'admin_settings'), (s) => { if(s.exists()) currentWeek = s.val().activeWeek; });
             }
         } else { window.location.href = "login.html"; }
@@ -108,7 +107,7 @@ if (page === "index.html" || page === "") {
     const finalSubmit = document.getElementById('finalSubmit');
     if (finalSubmit) {
         finalSubmit.onclick = async () => {
-            if (!finalPdfBlob) return;
+            if (!finalPdfBlob) return alert("يرجى معالجة الصور أولاً");
             const now = new Date();
             const dateStr = `${now.getDate()}-${now.getMonth() + 1}`;
             const fileName = `${currentUserData.fullName.replace(/\s+/g, '-')}-${dateStr}`;
@@ -119,7 +118,7 @@ if (page === "index.html" || page === "") {
             formData.append("public_id", fileName);
 
             try {
-                toggleStatus(true, "جاري الرفع باسم: " + fileName + " 🚀");
+                toggleStatus(true, "جاري الرفع إلى السحابة... 🚀");
                 const res = await fetch(CLOUDINARY_URL, { method: "POST", body: formData });
                 const data = await res.json();
                 if (data.secure_url) {
@@ -137,12 +136,11 @@ if (page === "index.html" || page === "") {
     }
 }
 
-// --- 4. منطق صفحة الأدمن (الليدر) ---
+// --- 4. منطق صفحة الأدمن (admin.html) ---
 if (page === "admin.html") {
     onAuthStateChanged(auth, (user) => {
         if (!user) { window.location.href = "login.html"; }
         else {
-            // تحديث الإعدادات (المادة والأسبوع)
             onValue(ref(db, 'admin_settings'), (snapshot) => {
                 if (snapshot.exists()) {
                     const settings = snapshot.val();
@@ -150,10 +148,9 @@ if (page === "admin.html") {
                     currentSubject = settings.subjectName;
                     document.getElementById('adminTitle').innerText = `لوحة تحكم | ${currentSubject}`;
                     document.getElementById('activeWeekLabel').innerText = `الأسبوع: ${currentWeek}`;
-                    loadSubmissions(); // إعادة تحميل الجدول عند تغيير الأسبوع
+                    loadSubmissions();
                 }
             });
-            // جلب إحصائية المسجلين من Firebase
             onValue(ref(db, 'users'), (snap) => {
                 document.getElementById('totalStudents').innerText = snap.exists() ? Object.keys(snap.val()).length : 0;
             });
@@ -169,21 +166,20 @@ if (page === "admin.html") {
                 document.getElementById('weekSubmissions').innerText = subs.length;
                 subs.forEach(sub => {
                     tableBody.innerHTML += `
-                        <tr class="border-b border-slate-700">
+                        <tr class="border-b border-slate-700 hover:bg-slate-800">
                             <td class="p-4 font-bold">${sub.studentName}</td>
                             <td class="p-4 text-blue-300 font-mono">${sub.academicIndex}</td>
                             <td class="p-4 text-xs text-slate-400">${sub.submittedAt}</td>
-                            <td class="p-4"><a href="${sub.fileUrl}" target="_blank" class="text-green-400 font-bold hover:underline">فتح PDF</a></td>
+                            <td class="p-4"><a href="${sub.fileUrl}" target="_blank" class="text-green-400 font-bold underline">فتح PDF</a></td>
                         </tr>`;
                 });
             } else {
                 document.getElementById('weekSubmissions').innerText = "0";
-                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-500">لا توجد تسليمات لهذا الأسبوع</td></tr>`;
+                tableBody.innerHTML = `<tr><td colspan="4" class="p-10 text-center text-slate-500 italic">لا توجد تسليمات</td></tr>`;
             }
         });
     }
 
-    // زر الترس
     window.toggleSettings = () => {
         const newSubject = prompt("اسم المادة:", currentSubject);
         const newWeek = prompt("رمز الأسبوع (مثال: week_2):", currentWeek);
@@ -192,25 +188,44 @@ if (page === "admin.html") {
         }
     };
     
-    // زر تحميل ZIP
+    // حل مشكلة المجلد الفارغ والبطء
     document.getElementById('downloadZipBtn').onclick = async () => {
         const subSnap = await get(ref(db, `submissions/${currentWeek}`));
-        if (!subSnap.exists()) return alert("لا توجد ملفات");
+        if (!subSnap.exists()) return alert("لا توجد ملفات لتحميلها");
+        
         const btn = document.getElementById('downloadZipBtn');
-        btn.innerText = "جاري التحميل... ⏳";
+        const originalText = btn.innerHTML;
+        btn.innerHTML = "جاري التحميل... ⏳";
+        btn.disabled = true;
+
         const zip = new JSZip();
-        const folder = zip.folder(currentWeek);
+        const folder = zip.folder(`تسليمات-${currentWeek}`);
         const subs = Object.values(subSnap.val());
-        for (const sub of subs) {
-            const res = await fetch(sub.fileUrl);
-            const blob = await res.blob();
-            folder.file(`${sub.studentName}-${sub.academicIndex}.pdf`, blob);
+
+        try {
+            // تحميل متوازي لجميع الملفات لضمان السرعة وعدم الفقدان
+            const downloadPromises = subs.map(async (sub) => {
+                const res = await fetch(sub.fileUrl);
+                const blob = await res.blob();
+                const fileName = `${sub.studentName.replace(/\s+/g, '-')}-${sub.academicIndex}.pdf`;
+                folder.file(fileName, blob);
+            });
+
+            await Promise.all(downloadPromises);
+            const content = await zip.generateAsync({ type: "blob" });
+            saveAs(content, `${currentSubject}-${currentWeek}.zip`);
+            
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        } catch (e) {
+            alert("حدث خطأ أثناء التجميع: " + e.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
         }
-        zip.generateAsync({type:"blob"}).then(c => { saveAs(c, `${currentWeek}.zip`); btn.innerText = "تحميل الكل (ZIP)"; });
     };
 }
 
-// --- 5. وظائف عامة ---
+// --- 5. وظائف مساعدة ---
 function readFileAsDataURL(file) { return new Promise(res => { const reader = new FileReader(); reader.onload = e => res(e.target.result); reader.readAsDataURL(file); }); }
 function toggleStatus(show, text = "") {
     const overlay = document.getElementById('statusOverlay');
@@ -218,7 +233,6 @@ function toggleStatus(show, text = "") {
     if (overlay && statusText) { statusText.innerText = text; show ? overlay.classList.remove('hidden') : overlay.classList.add('hidden'); }
 }
 function renderVerificationUI(email) {
-    document.body.innerHTML = `<div class="min-h-screen flex flex-col items-center justify-center p-6 text-center bg-slate-50"><div class="bg-white p-10 rounded-[3rem] shadow-xl max-w-md"><h1 class="text-2xl font-bold mb-4">فعل حسابك</h1><p class="mb-6">أرسلنا رابطاً لـ: ${email}</p><button onclick="location.reload()" class="w-full bg-blue-600 text-white py-4 rounded-2xl font-bold">تحديث ✅</button></div></div>`;
+    document.body.innerHTML = `<div class="min-h-screen flex items-center justify-center p-6 bg-slate-900"><div class="bg-slate-800 p-10 rounded-[2rem] text-center border border-slate-700 shadow-2xl"><h1 class="text-2xl font-bold mb-4">فعل حسابك</h1><p class="text-slate-400 mb-6">أرسلنا الرابط لـ: ${email}</p><button onclick="location.reload()" class="w-full bg-blue-600 py-3 rounded-xl font-bold">لقد فعلت ✅</button></div></div>`;
 }
-window.handleLogout = () => signOut(auth).then(() => location.href = "login.html");
 document.getElementById('logoutBtn')?.addEventListener('click', () => signOut(auth).then(() => location.href = "login.html"));
