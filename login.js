@@ -2,6 +2,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebas
 import { getAuth, signInWithEmailAndPassword, sendEmailVerification, signOut } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js";
 import { getDatabase, ref, get } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
+// --- إعدادات Firebase ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -21,39 +22,37 @@ const loginMessage = document.getElementById('loginMessage');
 
 loginForm?.addEventListener('submit', async (e) => {
     e.preventDefault();
-    
-    const email = document.getElementById('loginEmail').value;
+
+    const email = document.getElementById('loginEmail').value.trim();
     const pass = document.getElementById('loginPass').value;
 
     try {
+        // 1. تسجيل الدخول
         const userCredential = await signInWithEmailAndPassword(auth, email, pass);
         const user = userCredential.user;
 
-        // التحقق من التفعيل
+        // 2. التحقق من تفعيل البريد
         if (!user.emailVerified) {
-            showMessage("⚠️ بريدك غير موثق! تفقد رسائل البريد (أو الـ Spam) لتفعيل حسابك.", "bg-yellow-100 text-yellow-700");
+            showMessage("⚠️ بريدك غير موثق! تفقد رسائل البريد لتفعيل حسابك.", "bg-yellow-100 text-yellow-700");
             await sendEmailVerification(user); 
             await signOut(auth);
             return;
         }
 
-        // جلب بيانات الطالب من Database لمنع الـ undefined
-        const usersSnap = await get(ref(db, 'users'));
-        let studentFound = null;
+        // 3. جلب بيانات المستخدم مباشرة باستخدام الـ UID (أسرع وأدق)
+        const userRef = ref(db, `users/${user.uid}`);
+        const snap = await get(userRef);
 
-        if (usersSnap.exists()) {
-            const allUsers = usersSnap.val();
-            studentFound = Object.values(allUsers).find(u => u.email === email);
-        }
+        if (snap.exists()) {
+            const userData = snap.val();
+            
+            // تخزين البيانات محلياً لاستخدامها في المنصة
+            localStorage.setItem('user', JSON.stringify(userData));
 
-        if (studentFound) {
-            // تخزين البيانات بـ fullName و academicIndex للآدمن
-            localStorage.setItem('user', JSON.stringify(studentFound));
-            
-            showMessage("✅ جاري الدخول...", "bg-green-100 text-green-700");
-            
+            showMessage("✅ تم التحقق.. جاري الدخول", "bg-green-100 text-green-700");
+
             setTimeout(() => {
-                // توجيه للآدمن إذا كان البريد هو بريدك الخاص
+                // التوجيه بناءً على نوع الحساب
                 if (email === "admin@gmail.com") { 
                     window.location.href = "admin.html";
                 } else {
@@ -61,16 +60,28 @@ loginForm?.addEventListener('submit', async (e) => {
                 }
             }, 1500);
         } else {
-            showMessage("خطأ: لم نجد بياناتك في قاعدة البيانات", "bg-red-100 text-red-700");
+            // حالة نادرة: الحساب موجود في Auth ولكن بياناته غير موجودة في Database
+            showMessage("⚠️ لم نجد ملفك الشخصي، يرجى التواصل مع الإدارة.", "bg-red-100 text-red-700");
+            await signOut(auth);
         }
 
     } catch (error) {
-        showMessage("البريد أو كلمة المرور غير صحيحة", "bg-red-100 text-red-700");
+        console.error(error.code);
+        // رسائل خطأ واضحة بالعربي
+        if (error.code === 'auth/user-not-found' || error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') {
+            showMessage("⚠️ البريد الإلكتروني أو كلمة المرور غير صحيحة", "bg-red-100 text-red-700");
+        } else if (error.code === 'auth/too-many-requests') {
+            showMessage("⚠️ تم حظر الدخول مؤقتاً بسبب محاولات خاطئة كثيرة، حاول لاحقاً.", "bg-red-100 text-red-700");
+        } else {
+            showMessage("⚠️ حدث خطأ أثناء الدخول: " + error.message, "bg-red-100 text-red-700");
+        }
     }
 });
 
 function showMessage(text, style) {
-    loginMessage.textContent = text;
-    loginMessage.className = `block text-center font-bold p-3 rounded-xl text-sm mt-4 ${style}`;
-    loginMessage.classList.remove('hidden');
+    if (loginMessage) {
+        loginMessage.textContent = text;
+        loginMessage.className = `block text-center font-bold p-3 rounded-xl text-sm mt-4 animate-pulse ${style}`;
+        loginMessage.classList.remove('hidden');
+    }
 }
