@@ -4,20 +4,27 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>لوحة تحكم الليدر | الإشراف</title>
-    
+
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
-    
+
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700&display=swap');
-        body { font-family: 'Cairo', sans-serif; }
+        body { 
+            font-family: 'Cairo', sans-serif; 
+            scroll-behavior: smooth;
+        }
+        .fade-in { animation: fadeIn 0.5s ease-out; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: translateY(0); } }
         
-        /* تأثيرات التحميل وانتقال الجدول */
-        .fade-in { animation: fadeIn 0.5s ease-in; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-        
-        .settings-btn:hover { transform: rotate(45deg); }
+        /* تأثير النبض للأيقونات النشطة */
+        .pulse-green { animation: pulse 2s infinite; }
+        @keyframes pulse { 
+            0% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
     </style>
 </head>
 <body class="bg-slate-900 text-white min-h-screen p-4 md:p-8">
@@ -25,67 +32,82 @@
     <div class="max-w-6xl mx-auto fade-in">
         <header class="flex flex-col md:flex-row justify-between items-center mb-10 border-b border-slate-700 pb-6 gap-4">
             <div class="flex items-center gap-4">
-                <h1 id="adminTitle" class="text-2xl md:text-3xl font-bold text-blue-400">لوحة تحكم الليدر ⚡</h1>
-                <button onclick="toggleSettings()" class="settings-btn text-2xl transition-transform duration-300 focus:outline-none" title="إعدادات الأسبوع والمادة">
+                <div class="bg-blue-600 p-3 rounded-2xl shadow-lg shadow-blue-900/20">
+                    <span class="text-2xl">⚡</span>
+                </div>
+                <div>
+                    <h1 id="adminTitle" class="text-2xl md:text-3xl font-bold text-white italic">لوحة تحكم | جاري التحميل...</h1>
+                    <p id="activeWeekLabel" class="text-blue-400 text-sm font-semibold tracking-wide">الأسبوع: --</p>
+                </div>
+                <button onclick="toggleSettings()" class="hover:rotate-90 transition-transform duration-500 p-2 bg-slate-800 rounded-full border border-slate-700" title="إعدادات النظام">
                     ⚙️
                 </button>
             </div>
-            
-            <div class="flex gap-3">
-                <button onclick="location.reload()" class="bg-slate-700 hover:bg-slate-600 px-4 py-2 rounded-xl text-sm transition-all">تحديث البيانات 🔄</button>
-                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-4 py-2 rounded-xl text-sm font-bold transition-all">خروج</button>
+
+            <div class="flex items-center gap-3">
+                <button onclick="location.reload()" class="bg-slate-800 hover:bg-slate-700 px-5 py-2.5 rounded-2xl text-sm font-medium border border-slate-700 transition-all active:scale-95">تحديث 🔄</button>
+                <button id="logoutBtn" class="bg-red-500/10 text-red-500 border border-red-500/20 hover:bg-red-500 hover:text-white px-5 py-2.5 rounded-2xl text-sm font-bold transition-all">خروج</button>
             </div>
         </header>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-            <div class="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 shadow-xl">
-                <p class="text-slate-400 text-sm mb-1">إجمالي المسجلين بالنظام</p>
-                <h3 id="totalStudents" class="text-4xl font-bold text-white">0</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6 mb-10 text-center">
+            <div class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-slate-700/50 shadow-2xl">
+                <p class="text-slate-400 text-xs uppercase tracking-widest mb-2 font-bold">إجمالي المسجلين</p>
+                <h3 id="totalStudents" class="text-5xl font-black text-white">0</h3>
+                <div class="mt-4 text-[10px] text-slate-500">مستخدم مسجل في Firebase</div>
             </div>
-            
-            <div class="bg-slate-800 p-6 rounded-[2rem] border border-slate-700 shadow-xl">
-                <p class="text-slate-400 text-sm mb-1">تسليمات (الأسبوع الحالي)</p>
-                <h3 id="weekSubmissions" class="text-4xl font-bold text-emerald-400">0</h3>
+
+            <div class="bg-slate-800/50 backdrop-blur-md p-6 rounded-[2.5rem] border border-emerald-500/20 shadow-2xl relative overflow-hidden">
+                <p class="text-slate-400 text-xs uppercase tracking-widest mb-2 font-bold">تسليمات الأسبوع</p>
+                <h3 id="weekSubmissions" class="text-5xl font-black text-emerald-400">0</h3>
+                <div class="mt-4 text-[10px] text-emerald-500/60 font-bold">ملفات PDF جاهزة</div>
             </div>
-            
-            <div class="bg-blue-600 hover:bg-blue-700 p-2 rounded-[2rem] shadow-lg transition-all transform active:scale-95 group">
-                <button id="downloadZipBtn" class="w-full h-full flex flex-col items-center justify-center gap-1 text-white">
-                    <span class="text-3xl group-hover:bounce">📦</span>
-                    <span class="font-bold">تحميل الكل (ZIP)</span>
-                </button>
-            </div>
+
+            <button id="downloadZipBtn" class="bg-gradient-to-br from-blue-600 to-blue-800 hover:from-blue-500 hover:to-blue-700 p-6 rounded-[2.5rem] shadow-xl shadow-blue-900/40 transition-all transform active:scale-95 flex flex-col items-center justify-center gap-2 group border-t border-white/10">
+                <span class="text-4xl transition-transform group-hover:scale-110">📦</span>
+                <span class="font-black text-lg">تحميل ملف ZIP</span>
+                <span class="text-[10px] opacity-70">تجميع كافة روابط Cloudinary</span>
+            </button>
         </div>
 
-        <div class="bg-slate-800 rounded-[2rem] overflow-hidden border border-slate-700 shadow-2xl">
-            <div class="p-6 border-b border-slate-700 flex justify-between items-center bg-slate-800/50">
-                <h2 class="font-bold text-lg">قائمة الطلاب المسلمين</h2>
-                <span class="text-xs bg-slate-700 px-3 py-1 rounded-full text-slate-300 italic" id="activeWeekLabel">الأسبوع: جاري التحميل...</span>
+        <div class="bg-slate-800/80 rounded-[2.5rem] overflow-hidden border border-slate-700 shadow-2xl mb-10">
+            <div class="p-6 border-b border-slate-700 bg-slate-800/50 flex justify-between items-center">
+                <h2 class="font-black text-xl flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-emerald-500 pulse-green"></span>
+                    قائمة المهندسين
+                </h2>
+                <div class="text-xs text-slate-400 font-mono">Real-time Data Sync 🛰️</div>
             </div>
             
             <div class="overflow-x-auto">
-                <table class="w-full text-right">
-                    <thead class="bg-slate-700/50 text-slate-400 text-sm">
+                <table class="w-full text-right border-collapse">
+                    <thead class="bg-slate-900/50 text-slate-400 text-[10px] uppercase tracking-tighter">
                         <tr>
-                            <th class="p-5 font-semibold">اسم المهندس</th>
-                            <th class="p-5 font-semibold">الرقم الجامعي</th>
-                            <th class="p-5 font-semibold">تاريخ ووقت التسليم</th>
-                            <th class="p-5 font-semibold text-center">الملف</th>
+                            <th class="p-6 font-black">الاسم الرباعي</th>
+                            <th class="p-6 font-black">الرقم الأكاديمي</th>
+                            <th class="p-6 font-black">توقيت الرفع</th>
+                            <th class="p-6 font-black text-center">رابط Cloudinary</th>
                         </tr>
                     </thead>
-                    <tbody id="adminTableBody" class="divide-y divide-slate-700">
+                    <tbody id="adminTableBody" class="text-sm divide-y divide-slate-700/50">
                         <tr>
-                            <td colspan="4" class="p-10 text-center text-slate-500 italic">جاري جلب البيانات من السحابة...</td>
+                            <td colspan="4" class="p-20 text-center">
+                                <div class="flex flex-col items-center gap-4">
+                                    <div class="animate-spin rounded-full h-10 w-10 border-b-2 border-blue-500"></div>
+                                    <p class="text-slate-500 animate-pulse">جاري سحب البيانات من السحابة...</p>
+                                </div>
+                            </td>
                         </tr>
                     </tbody>
                 </table>
             </div>
         </div>
 
-        <footer class="mt-8 text-center text-slate-500 text-xs">
-            منصة تسليم التكليفات الذكية &copy; 2026
+        <footer class="text-center pb-10 text-slate-600 text-[10px] font-bold uppercase tracking-widest">
+            Engineering Assignments Control Panel &copy; 2026
         </footer>
     </div>
 
-    <script type="module" src="admin.js"></script>
+    <script type="module" src="main.js"></script>
 </body>
 </html>
