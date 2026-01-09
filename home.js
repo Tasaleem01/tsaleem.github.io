@@ -27,23 +27,24 @@ let activeWeek = "";
 let countdownInterval;
 
 window.addEventListener('load', () => {
+    // التحقق من وجود بيانات المستخدم
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('accessDenied').classList.remove('hidden');
         return;
     }
 
-    // إخفاء اللودر
+    // إخفاء اللودر التدريجي
     document.getElementById('initialLoader').style.opacity = '0';
     setTimeout(() => {
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
     }, 500);
 
-    // التعديل هنا: استخدام fullName ليتوافق مع بيانات المسجلين
-    document.getElementById('displayUserName').textContent = currentUser.fullName || currentUser.name;
-    document.getElementById('displayIndex').textContent = currentUser.academicId;
-    document.getElementById('displayCollege').textContent = currentUser.college;
+    // عرض البيانات (استخدام المسميات الجديدة من register.js)
+    document.getElementById('displayUserName').textContent = currentUser.fullName || "مهندس غير معروف";
+    document.getElementById('displayIndex').textContent = currentUser.academicIndex || "0000";
+    document.getElementById('displayCollege').textContent = currentUser.college || "غير محدد";
 
     loadAdminSettings();
 });
@@ -116,7 +117,7 @@ document.getElementById('convertBtn').addEventListener('click', async (e) => {
     toggleOverlay(false);
 });
 
-// --- 5. الرفع النهائي ---
+// --- 5. الرفع النهائي إلى Cloudinary ---
 document.getElementById('finalSubmit').addEventListener('click', async () => {
     if (!currentPdfBlob) return;
     toggleOverlay(true, "جاري رفع الملف للسيرفر... 🚀");
@@ -130,21 +131,25 @@ document.getElementById('finalSubmit').addEventListener('click', async () => {
         const result = await res.json();
 
         if (result.secure_url) {
-            const uid = currentUser.academicId; 
-            await set(ref(db, `submissions/${activeWeek}/${uid}`), {
-                // التعديل هنا: إرسال studentName و fullName للآدمن
-                studentName: currentUser.fullName || currentUser.name,
-                academicIndex: currentUser.academicId,
+            // المفتاح يجب أن يكون الـ UID أو الـ academicIndex لضمان الترتيب
+            const userKey = currentUser.uid || currentUser.academicIndex; 
+            
+            await set(ref(db, `submissions/${activeWeek}/${userKey}`), {
+                studentName: currentUser.fullName, // ليتوافق مع جدول الآدمن
+                academicIndex: currentUser.academicIndex, // ليتوافق مع جدول الآدمن
                 fileUrl: result.secure_url,
                 submittedAt: new Date().toLocaleString('ar-EG'),
                 timestamp: new Date().getTime()
             });
 
-            alert("تم التسليم بنجاح!");
+            alert("تم التسليم بنجاح يا مهندس! ✅");
             location.reload();
+        } else {
+            throw new Error("لم يتم الحصول على رابط الملف");
         }
     } catch (e) {
-        alert("فشل الرفع، حاول ثانية");
+        console.error(e);
+        alert("فشل الرفع، تأكد من إعدادات Cloudinary وحاول ثانية");
         toggleOverlay(false);
     }
 });
@@ -157,6 +162,20 @@ document.getElementById('imageInput').onchange = (e) => {
     status.classList.remove('hidden');
 };
 
-function readFile(file) { return new Promise(res => { const r = new FileReader(); r.onload = (e) => res(e.target.result); r.readAsDataURL(file); }); }
-function toggleOverlay(s, t) { document.getElementById('statusOverlay').classList.toggle('hidden', !s); document.getElementById('statusText').textContent = t; }
-document.getElementById('logoutBtn').onclick = () => { localStorage.removeItem('user'); location.reload(); };
+function readFile(file) { 
+    return new Promise(res => { 
+        const r = new FileReader(); 
+        r.onload = (e) => res(e.target.result); 
+        r.readAsDataURL(file); 
+    }); 
+}
+
+function toggleOverlay(s, t) { 
+    document.getElementById('statusOverlay').classList.toggle('hidden', !s); 
+    document.getElementById('statusText').textContent = t; 
+}
+
+document.getElementById('logoutBtn').onclick = () => { 
+    localStorage.removeItem('user'); 
+    location.reload(); 
+};
