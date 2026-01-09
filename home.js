@@ -1,7 +1,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js";
 import { getDatabase, ref, onValue, set } from "https://www.gstatic.com/firebasejs/10.7.1/firebase-database.js";
 
-// --- 1. الإعدادات ---
+// --- 1. إعدادات المشروع ---
 const firebaseConfig = {
     apiKey: "AIzaSyA3YrKmw3sAdl2pld-KRCb7wbf3xlnw8G0",
     authDomain: "tasaleem-c2218.firebaseapp.com",
@@ -13,7 +13,7 @@ const firebaseConfig = {
 };
 
 const CLOUD_NAME = "dilxydgpn"; 
-const UPLOAD_PRESET = "student_uploads"; 
+const UPLOAD_PRESET = "student_uploads"; // تأكد أنه Unsigned في إعدادات Cloudinary
 const CLOUDINARY_URL = `https://api.cloudinary.com/v1_1/${CLOUD_NAME}/upload`;
 
 const app = initializeApp(firebaseConfig);
@@ -26,22 +26,22 @@ let currentPdfBlob = null;
 let activeWeek = "";
 let countdownInterval;
 
+// --- 3. عند تحميل الصفحة ---
 window.addEventListener('load', () => {
-    // التحقق من وجود بيانات المستخدم
     if (!currentUser) {
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('accessDenied').classList.remove('hidden');
         return;
     }
 
-    // إخفاء اللودر التدريجي
-    document.getElementById('initialLoader').style.opacity = '0';
+    // إظهار المحتوى وإخفاء اللودر
     setTimeout(() => {
+        document.getElementById('initialLoader').style.opacity = '0';
         document.getElementById('initialLoader').classList.add('hidden');
         document.getElementById('mainContent').classList.remove('hidden');
     }, 500);
 
-    // عرض البيانات (استخدام المسميات الجديدة من register.js)
+    // عرض بيانات المهندس
     document.getElementById('displayUserName').textContent = currentUser.fullName || "مهندس غير معروف";
     document.getElementById('displayIndex').textContent = currentUser.academicIndex || "0000";
     document.getElementById('displayCollege').textContent = currentUser.college || "غير محدد";
@@ -49,7 +49,7 @@ window.addEventListener('load', () => {
     loadAdminSettings();
 });
 
-// --- 3. جلب الإعدادات والعد التنازلي ---
+// --- 4. جلب إعدادات الأسبوع والعد التنازلي ---
 function loadAdminSettings() {
     onValue(ref(db, 'admin_settings'), (snapshot) => {
         const data = snapshot.val();
@@ -75,7 +75,7 @@ function startCountdown(deadlineTimestamp) {
         if (distance < 0) {
             clearInterval(countdownInterval);
             deadlineDisplay.textContent = "انتهى الوقت ⌛";
-            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500">⚠️ انتهى موعد التسليم</div>`;
+            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500">⚠️ انتهى موعد التسليم لهذه المادة</div>`;
             return;
         }
 
@@ -88,39 +88,57 @@ function startCountdown(deadlineTimestamp) {
     }, 1000);
 }
 
-// --- 4. تحويل الصور ومعاينة الملف ---
-document.getElementById('convertBtn').addEventListener('click', async (e) => {
-    e.preventDefault(); 
-    if (selectedFiles.length === 0) return alert("اختر الصور أولاً");
-
-    toggleOverlay(true, "جاري إنشاء ملف PDF للمعاينة...");
-
-    const { jsPDF } = window.jspdf;
-    const pdf = new jsPDF();
-
-    for (let i = 0; i < selectedFiles.length; i++) {
-        const imgData = await readFile(selectedFiles[i]);
-        if (i > 0) pdf.addPage();
-        const pdfWidth = pdf.internal.pageSize.getWidth();
-        const pdfHeight = pdf.internal.pageSize.getHeight();
-        pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+// --- 5. اختيار الصور وتحويلها لـ PDF ---
+document.getElementById('imageInput').onchange = (e) => {
+    selectedFiles = Array.from(e.target.files);
+    const status = document.getElementById('fileStatus');
+    if (selectedFiles.length > 0) {
+        status.textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
+        status.classList.remove('hidden');
     }
+};
 
-    currentPdfBlob = pdf.output('blob');
-    const pdfUrl = URL.createObjectURL(currentPdfBlob);
+document.getElementById('convertBtn').addEventListener('click', async (e) => {
+    e.preventDefault();
+    if (selectedFiles.length === 0) return alert("الرجاء اختيار الصور أولاً يا مهندس!");
 
-    const frame = document.getElementById('pdfFrame');
-    frame.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none"></iframe>`;
+    toggleOverlay(true, "جاري معالجة الصور وتحويلها لـ PDF... 📄");
 
-    document.getElementById('previewArea').classList.remove('hidden');
-    document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
-    toggleOverlay(false);
+    try {
+        const { jsPDF } = window.jspdf;
+        const pdf = new jsPDF();
+
+        for (let i = 0; i < selectedFiles.length; i++) {
+            const imgData = await readFile(selectedFiles[i]);
+            if (i > 0) pdf.addPage();
+            
+            const pdfWidth = pdf.internal.pageSize.getWidth();
+            const pdfHeight = pdf.internal.pageSize.getHeight();
+            // إضافة الصورة لتغطي كامل الصفحة
+            pdf.addImage(imgData, 'JPEG', 0, 0, pdfWidth, pdfHeight);
+        }
+
+        currentPdfBlob = pdf.output('blob');
+        const pdfUrl = URL.createObjectURL(currentPdfBlob);
+
+        // عرض المعاينة
+        const frame = document.getElementById('pdfFrame');
+        frame.innerHTML = `<iframe src="${pdfUrl}" class="w-full h-full border-none rounded-2xl"></iframe>`;
+
+        document.getElementById('previewArea').classList.remove('hidden');
+        document.getElementById('previewArea').scrollIntoView({ behavior: 'smooth' });
+    } catch (err) {
+        alert("حدث خطأ أثناء معالجة الصور.");
+    } finally {
+        toggleOverlay(false);
+    }
 });
 
-// --- 5. الرفع النهائي إلى Cloudinary ---
+// --- 6. الرفع النهائي لـ Cloudinary وحفظ البيانات ---
 document.getElementById('finalSubmit').addEventListener('click', async () => {
     if (!currentPdfBlob) return;
-    toggleOverlay(true, "جاري رفع الملف للسيرفر... 🚀");
+    
+    toggleOverlay(true, "جاري رفع التكليف إلى السيرفر... 🚀");
 
     const formData = new FormData();
     formData.append('file', currentPdfBlob);
@@ -131,51 +149,55 @@ document.getElementById('finalSubmit').addEventListener('click', async () => {
         const result = await res.json();
 
         if (result.secure_url) {
-            // المفتاح يجب أن يكون الـ UID أو الـ academicIndex لضمان الترتيب
-            const userKey = currentUser.uid || currentUser.academicIndex; 
-            
-            await set(ref(db, `submissions/${activeWeek}/${userKey}`), {
-                studentName: currentUser.fullName, // ليتوافق مع جدول الآدمن
-                academicIndex: currentUser.academicIndex, // ليتوافق مع جدول الآدمن
+            // المفتاح الفريد للطالب هو الـ UID أو الـ Academic Index
+            const studentKey = currentUser.uid || currentUser.academicIndex;
+
+            await set(ref(db, `submissions/${activeWeek}/${studentKey}`), {
+                studentName: currentUser.fullName,
+                academicIndex: currentUser.academicIndex,
                 fileUrl: result.secure_url,
                 submittedAt: new Date().toLocaleString('ar-EG'),
                 timestamp: new Date().getTime()
             });
 
-            alert("تم التسليم بنجاح يا مهندس! ✅");
+            toggleOverlay(false);
+            alert("كفو يا مهندس! تم تسليم ملفك بنجاح ✅");
             location.reload();
         } else {
-            throw new Error("لم يتم الحصول على رابط الملف");
+            // إذا فشل الرفع من جهة Cloudinary
+            console.error("Cloudinary Error:", result);
+            alert("فشل الرفع: تأكد من إعدادات Cloudinary (خاصة الـ Unsigned Preset)");
+            toggleOverlay(false);
         }
     } catch (e) {
-        console.error(e);
-        alert("فشل الرفع، تأكد من إعدادات Cloudinary وحاول ثانية");
+        console.error("Fetch Error:", e);
+        alert("حدث خطأ في الاتصال بالسيرفر. حاول مرة أخرى.");
         toggleOverlay(false);
     }
 });
 
-// وظائف مساعدة
-document.getElementById('imageInput').onchange = (e) => {
-    selectedFiles = Array.from(e.target.files);
-    const status = document.getElementById('fileStatus');
-    status.textContent = `✅ تم اختيار ${selectedFiles.length} صور`;
-    status.classList.remove('hidden');
-};
-
-function readFile(file) { 
-    return new Promise(res => { 
-        const r = new FileReader(); 
-        r.onload = (e) => res(e.target.result); 
-        r.readAsDataURL(file); 
-    }); 
+// --- وظائف مساعدة ---
+function readFile(file) {
+    return new Promise((resolve) => {
+        const reader = new FileReader();
+        reader.onload = (e) => resolve(e.target.result);
+        reader.readAsDataURL(file);
+    });
 }
 
-function toggleOverlay(s, t) { 
-    document.getElementById('statusOverlay').classList.toggle('hidden', !s); 
-    document.getElementById('statusText').textContent = t; 
+function toggleOverlay(show, text = "") {
+    const overlay = document.getElementById('statusOverlay');
+    const statusText = document.getElementById('statusText');
+    if (show) {
+        statusText.textContent = text;
+        overlay.classList.remove('hidden');
+    } else {
+        overlay.classList.add('hidden');
+    }
 }
 
-document.getElementById('logoutBtn').onclick = () => { 
-    localStorage.removeItem('user'); 
-    location.reload(); 
+// تسجيل الخروج
+document.getElementById('logoutBtn').onclick = () => {
+    localStorage.removeItem('user');
+    location.reload();
 };
