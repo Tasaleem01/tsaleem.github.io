@@ -46,11 +46,11 @@ regForm.addEventListener('submit', async (e) => {
             return;
         }
 
-        // تجهيز بيانات المستخدم
+        // تجهيز بيانات المستخدم بمسميات تتوافق مع لوحة الآدمن
         const userData = {
-            name: name,
+            fullName: name,          // تم تعديله من name ليتعرف عليه الآدمن
             email: email,
-            academicId: academicId,
+            academicIndex: academicId, // تم تعديله من academicId ليتعرف عليه الآدمن
             college: college,
             password: password,
             createdAt: new Date().toISOString()
