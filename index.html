@@ -9,14 +9,14 @@
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap');
         body { font-family: 'Cairo', sans-serif; scroll-behavior: smooth; }
-        
+
         .loader-screen { position: fixed; inset: 0; background: #0f172a; z-index: 9999; display: flex; flex-direction: column; align-items: center; justify-content: center; transition: opacity 0.5s; }
         .spinner { width: 50px; height: 50px; border: 5px solid #1e293b; border-top-color: #3b82f6; border-radius: 50%; animation: spin 1s linear infinite; }
         @keyframes spin { to { transform: rotate(360deg); } }
-        
+
         .progress-container { width: 100%; background-color: #1e293b; border-radius: 999px; height: 8px; margin-top: 15px; overflow: hidden; }
         #progressBar { width: 0%; height: 100%; background: linear-gradient(90deg, #3b82f6, #10b981); transition: width 0.3s ease-in-out; }
-        
+
         /* تأثيرات بسيطة للبطاقات */
         .card-glow { transition: all 0.3s ease; }
         .card-glow:hover { border-color: #3b82f6; box-shadow: 0 0 20px rgba(59, 130, 246, 0.15); }
@@ -42,7 +42,7 @@
                 <div class="flex items-center gap-3">
                     <div class="bg-blue-600 w-12 h-12 rounded-2xl flex items-center justify-center text-2xl shadow-lg">🎓</div>
                     <div>
-                        <h2 class="text-sm md:text-lg font-bold leading-tight">مرحباً يا مهندس/ <span id="displayUserName" class="text-blue-400">...</span></h2>
+                        <h2 class="text-sm md:text-lg font-bold leading-tight">مرحباً يا / <span id="displayUserName" class="text-blue-400">...</span></h2>
                         <div class="flex gap-3 text-[10px] font-bold text-slate-400 mt-1">
                             <span class="bg-slate-700 px-2 py-0.5 rounded">ID: <span id="displayIndex" class="text-slate-300">...</span></span>
                             <span class="bg-slate-700 px-2 py-0.5 rounded">الكلية: <span id="displayCollege" class="text-slate-300">...</span></span>
@@ -54,7 +54,7 @@
         </header>
 
         <main class="max-w-3xl mx-auto p-4 mt-8 pb-20">
-            
+
             <div id="submissionStatusArea" class="mb-8 hidden space-y-4">
                 </div>
 
@@ -81,7 +81,7 @@
                     <div class="flex items-center gap-2 border-r-4 border-blue-500 pr-3">
                         <h4 class="font-black text-lg text-blue-400 italic">👁️ معاينة الملف النهائي:</h4>
                     </div>
-                    
+
                     <div id="pdfFrame" class="w-full h-[400px] bg-slate-900 rounded-[2rem] overflow-hidden border border-slate-700 flex items-center justify-center">
                         </div>
 
@@ -89,7 +89,7 @@
                         <p class="text-amber-400 text-[10px] font-bold">💡 تأكد من وضوح جميع الصور وترتيبها في المعاينة قبل الإرسال النهائي.</p>
                     </div>
 
-                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-lg hover:bg-emerald-500 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-900/20">إرسال الملف النهائي لليدر 🚀</button>
+                    <button id="finalSubmit" class="w-full bg-emerald-600 text-white py-5 rounded-[1.5rem] font-black text-lg hover:bg-emerald-500 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-emerald-900/20">إرسال الملف النهائي لليدر (pdf)  🚀</button>
                 </div>
             </div>
         </main>
@@ -98,7 +98,7 @@
     <div id="statusOverlay" class="hidden fixed inset-0 bg-slate-950/90 backdrop-blur-xl z-[200] flex items-center justify-center p-6 text-center">
         <div class="bg-slate-800 border border-slate-700 p-10 rounded-[3rem] max-w-sm w-full shadow-2xl">
             <div class="spinner mx-auto mb-6 shadow-[0_0_20px_rgba(59,130,246,0.5)]"></div>
-            <p id="statusText" class="text-lg font-bold text-white italic">جاري المعالجة الصاروخية...</p>
+            <p id="statusText" class="text-lg font-bold text-white italic">جاري المعالجة ...</p>
             <div class="progress-container">
                 <div id="progressBar" class="animate-pulse"></div>
             </div>
