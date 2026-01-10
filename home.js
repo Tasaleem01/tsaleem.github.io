@@ -53,7 +53,7 @@ function loadAdminSettings() {
             activeWeek = data.activeWeek;
             document.getElementById('weekTaskTitle').textContent = `تكليف مادة: ${data.subjectName} - ${activeWeek}`;
             if (data.deadline) startCountdown(data.deadline);
-            
+
             // بمجرد معرفة الاسبوع النشط، نفحص هل الطالب سلم فيه أم لا
             checkIfSubmitted();
         }
@@ -70,8 +70,8 @@ function startCountdown(deadlineTimestamp) {
 
         if (distance < 0) {
             clearInterval(countdownInterval);
-            deadlineDisplay.textContent = "انتهى الموعد ⌛";
-            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500 bg-red-50/50 rounded-[2.5rem]">⚠️ انتهى وقت التسليم لهذا الأسبوع</div>`;
+            deadlineDisplay.textContent = "عفوا لقد انتهئ موعد التسليم  ⌛";
+            document.getElementById('uploadCard').innerHTML = `<div class="p-10 text-center font-bold text-red-500 bg-red-50/50 rounded-[2.5rem]">⚠️ عفواً لقد انتهئ موعد التسليم لهذا الاسبوع </div>`;
             return;
         }
 
@@ -88,7 +88,7 @@ function startCountdown(deadlineTimestamp) {
 async function checkIfSubmitted() {
     const statusArea = document.getElementById('submissionStatusArea');
     const uid = currentUser.uid || currentUser.academicIndex;
-    
+
     // مراقبة المسار في قاعدة البيانات
     onValue(ref(db, `submissions/${activeWeek}/${uid}`), (snapshot) => {
         if (statusArea) {
@@ -140,7 +140,7 @@ document.getElementById('convertBtn').onclick = async (e) => {
     e.preventDefault();
     if (selectedFiles.length === 0) return alert("اختر الصور أولاً يا مهندس");
 
-    toggleOverlay(true, "جاري المعالجة البرقية وضغط الملف... ⚡🚀");
+    toggleOverlay(true, "جاري المعالجة  وضغط الملف (pdf)... ⚡🚀");
 
     try {
         const { jsPDF } = window.jspdf;
@@ -198,7 +198,7 @@ async function processImageFast(file) {
 // --- 6. الرفع النهائي للسيرفر (Cloudinary + Firebase) ---
 document.getElementById('finalSubmit').onclick = async () => {
     if (!currentPdfBlob) return;
-    toggleOverlay(true, "جاري الرفع الصاروخي... 🚀");
+    toggleOverlay(true, "جاري الرفع النهائي لليدر...لا تغلق الصفحة  ... 🚀");
 
     const formData = new FormData();
     formData.append('file', currentPdfBlob);
