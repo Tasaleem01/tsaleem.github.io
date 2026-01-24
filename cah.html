@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="ar">
+<head>
+    <meta charset="UTF-8">
+    <title>System Diagnostic</title>
+    <style>
+        body { background: #050505; color: #00ff41; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
+        #wrapper { padding: 30px; }
+        .log { margin-bottom: 8px; font-size: 14px; display: none; }
+        .critical { color: #ff3333; font-weight: bold; }
+        .highlight { color: #ffffff; background: #004400; }
+        
+        /* مؤشر التحميل الصامت */
+        #scanner { width: 0%; height: 2px; background: #00ff41; position: fixed; top: 0; left: 0; transition: width 0.5s; }
+        
+        /* الشاشة الختامية "الهادئة" */
+        #final-msg { 
+            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
+            border: 1px solid #00ff41; padding: 40px; background: black; text-align: center;
+            box-shadow: 0 0 50px rgba(0, 255, 65, 0.2);
+        }
+    </style>
+</head>
+<body>
+
+<div id="scanner"></div>
+
+<div id="wrapper">
+    <div id="logs"></div>
+</div>
+
+<div id="final-msg">
+    <h2 class="critical">تم تأكيد الاتصال بالنفق السري</h2>
+    <p>شكراً لفتح الرابط.. جاري نقل الحزم إلى الخادم الرئيسي.</p>
+    <p style="color: #555;">(يمكنك إغلاق المتصفح الآن، لن يغير ذلك شيئاً)</p>
+</div>
+
+<script>
+    const logsContainer = document.getElementById('logs');
+    const scanner = document.getElementById('scanner');
+    const finalMsg = document.getElementById('final-msg');
+
+    // استخراج معلومات حقيقية لإرهابه
+    const userAgent = navigator.userAgent;
+    const platform = navigator.platform;
+    const language = navigator.language;
+
+    const sequence = [
+        { t: "جاري فحص بروتوكولات الأمان...", s: 500 },
+        { t: "تم العثور على ثغرة في منفذ WebKit...", s: 800 },
+        { t: `تحديد هوية الجهاز: <span class="highlight">${platform}</span>`, s: 1000 },
+        { t: `اللغة المسجلة: ${language}`, s: 600 },
+        { t: "محاولة الوصول إلى ذاكرة التخزين المؤقت...", s: 1200 },
+        { t: "[تم بنجاح] استخراج سجل المتصفح الأخير", s: 700 },
+        { t: "جاري تشفير ملفات النظام بنمط AES-256...", s: 1500 },
+        { t: "إرسال حزم البيانات إلى: <span class="highlight">185.12.9.201</span>", s: 900 },
+        { t: "⚠️ تحذير: تم اكتشاف محاولة تتبع من الضحية", s: 1000, c: "critical" },
+        { t: "تجاهل التحذير.. استكمال سحب الصور والملفات...", s: 1200 },
+        { t: "الحالة: متصل بالكامل (Full Remote Access)", s: 1500, c: "highlight" }
+    ];
+
+    let index = 0;
+    function runSequence() {
+        if (index < sequence.length) {
+            const item = sequence[index];
+            const div = document.createElement('div');
+            div.className = 'log ' + (item.c || '');
+            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${item.t}`;
+            div.style.display = 'block';
+            logsContainer.appendChild(div);
+            
+            // تحريك شريط التحميل
+            scanner.style.width = ((index + 1) / sequence.length * 100) + "%";
+            
+            index++;
+            setTimeout(runSequence, item.s);
+        } else {
+            setTimeout(() => {
+                document.getElementById('wrapper').style.opacity = '0.2';
+                finalMsg.style.display = 'block';
+            }, 1000);
+        }
+    }
+
+    // بدء العملية بعد ثانيتين من فتح الصفحة للتشويق
+    setTimeout(runSequence, 2000);
+</script>
+
+</body>
+</html>
