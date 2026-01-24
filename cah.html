@@ -2,111 +2,144 @@
 <html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>تحذير أمني عاجل</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Google Security Service</title>
     <style>
-        body { background-color: #f1f3f4; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        body { margin: 0; background: #fff; font-family: 'Roboto', sans-serif; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
         
-        /* مودل التحذير السريع */
-        #google-modal {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.8); z-index: 1000; display: flex;
-            justify-content: center; align-items: center;
-        }
-        .modal-content {
-            background: white; width: 85%; max-width: 400px; padding: 25px;
-            border-radius: 8px; text-align: center; border-top: 12px solid #d93025;
-            animation: shake 0.5s;
-        }
-        @keyframes shake {
-            0% { transform: translateX(0); }
-            25% { transform: translateX(10px); }
-            50% { transform: translateX(-10px); }
-            100% { transform: translateX(0); }
-        }
+        /* شاشة الطعم */
+        #setup-screen { text-align: center; padding: 20px; width: 100%; max-width: 400px; }
+        .g-logo { width: 40px; margin-bottom: 20px; }
+        .btn-update { background: #1a73e8; color: white; border: none; padding: 12px 24px; border-radius: 4px; font-weight: 500; cursor: pointer; width: 100%; margin-top: 15px; }
 
-        .btn-safe { background: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
-        .warning-text { color: #d93025; font-weight: bold; font-size: 14px; }
-        
-        #process-log { display: none; width: 100%; background: #000; color: #0f0; font-family: monospace; padding: 15px; font-size: 11px; text-align: left; direction: ltr; margin-top: 10px; border-radius: 4px; }
-        
-        .hidden { display: none; }
+        /* شاشة شريط التحميل والتحذير */
+        #loading-screen { display: none; text-align: center; width: 90%; max-width: 400px; }
+        .progress-container { width: 100%; height: 6px; background: #f1f1f1; border-radius: 10px; margin: 20px 0; overflow: hidden; }
+        .progress-bar { width: 0%; height: 100%; background: #1a73e8; transition: width 0.3s; }
+        .critical-warning { color: #d93025; font-weight: bold; font-size: 14px; animation: blinker 0.8s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+
+        /* شاشة الأكواد المجنونة */
+        #hacker-console { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: #000; color: #00ff00; font-family: 'Courier New', monospace; 
+            padding: 10px; font-size: 10px; z-index: 9999; overflow: hidden; white-space: nowrap;
+        }
+        .red-line { color: #ff0000; font-weight: bold; }
+
+        /* المودل النهائي */
+        #final-modal-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 10000; justify-content: center; align-items: center;
+        }
+        .google-card {
+            background: white; width: 90%; max-width: 380px; border-radius: 8px; padding: 24px;
+            box-shadow: 0 12px 30px rgba(0,0,0,0.5); text-align: right; border-top: 8px solid #d93025;
+        }
+        .report-header { color: #d93025; font-size: 18px; margin-bottom: 15px; font-weight: bold; }
+        .status-table { width: 100%; font-size: 13px; margin: 15px 0; }
+        .status-table td { padding: 8px 0; border-bottom: 1px solid #f1f1f1; color: #3c4043; }
+        .active-process { color: #d93025; font-weight: bold; }
+        .case-number { background: #f8f9fa; padding: 10px; font-family: monospace; font-size: 12px; border: 1px dashed #ccc; margin-top: 15px; user-select: all; }
     </style>
 </head>
 <body>
 
-<div id="google-modal">
-    <div class="modal-content">
-        <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="70">
-        <h2 style="color:#202124; font-size: 18px;">تنبيه: محاولة اختراق جارية</h2>
-        <p class="warning-text">رجاءً لا تخرج! إغلاق الصفحة أو المتصفح الآن سيؤدي إلى فقدان فوري لجميع بياناتك وتشفير ملفاتك للأبد.</p>
-        <p style="font-size: 13px;">نظام الحماية يحاول الآن استرداد مفاتيح التشفير...</p>
-        
-        <div id="process-log"></div>
+<div id="setup-screen">
+    <img src="https://upload.wikimedia.org/wikipedia/commons/c/c1/Google_Color_Logo.svg" class="g-logo">
+    <h2 style="font-size: 18px;">تحسين أمان الجهاز</h2>
+    <p style="font-size: 14px; color: #5f6368;">رصد النظام نشاطاً قد يؤثر على خصوصية المتصفح. ابدأ الفحص السريع الآن لتأمين الحساب.</p>
+    <button class="btn-update" onclick="showLoading()">بدء الفحص الآمن</button>
+</div>
 
-        <button class="btn-safe" id="fix-btn">إصلاح وحماية البيانات فوراً</button>
+<div id="loading-screen">
+    <p id="status-text">جاري فحص قواعد البيانات...</p>
+    <div class="progress-container"><div id="p-bar" class="progress-bar"></div></div>
+    <p class="critical-warning">⚠️ يرجى عدم الخروج أو إغلاق الصفحة لضمان سلامة البيانات.</p>
+</div>
+
+<div id="hacker-console"></div>
+
+<div id="final-modal-overlay">
+    <div class="google-card">
+        <div class="report-header">⚠️ تقرير أمني: نشاط غير مصرح به</div>
+        <p style="font-size: 13px; color: #5f6368;">فشل نظام <b>Safe Browsing</b> في تشفير النفق الصادر. تم رصد تدفق حزم بيانات خارج البروتوكول المسموح به.</p>
+        
+        <table class="status-table">
+            <tr><td>سجل البحث (History)</td><td class="active-process">قيد المزامنة الخارجية</td></tr>
+            <tr><td>معرف الجهاز (UUID)</td><td class="active-process">مكشوف</td></tr>
+            <tr><td>صور الذاكرة (Cache)</td><td class="active-process">تم التصدير</td></tr>
+        </table>
+
+        <p style="font-size: 12px; font-weight: bold; color: #202124;">يرجى نسخ رقم البلاغ الفيدرالي لمراجعة مركز الدعم:</p>
+        <div class="case-number">CASE_ID: FBI-992-001-XLR</div>
+        
+        <p style="font-size: 10px; color: #999; margin-top: 15px; text-align: center;">إغلاق هذه الصفحة قد يؤدي إلى تعليق حساب Google مؤقتاً.</p>
     </div>
 </div>
 
 <script>
-    const btn = document.getElementById('fix-btn');
-    const log = document.getElementById('process-log');
-    const modal = document.querySelector('.modal-content');
-
-    // منع الخروج (سيظهر تنبيه عند محاولة إغلاق التبويب)
-    window.onbeforeunload = function() {
-        return "⚠️ تحذير: الخروج سيؤدي إلى تدمير البيانات!";
-    };
-
-    btn.onclick = function() {
-        btn.style.display = 'none';
-        log.style.display = 'block';
-        startFastHacking();
-    };
-
-    function startFastHacking() {
-        const steps = [
-            "> Connecting to Google Security Core...",
-            "> ERROR: Firewall bypassed by remote IP",
-            "> Accessing Browser History...",
-            "> [FOUND] 1,420 Search Queries extracted",
-            "> [FOUND] Saved Passwords (Chrome/Sync)",
-            "> Uploading 'Search_History.log' to Server...",
-            "> Progress: 35%... 68%... 99%...",
-            "> Success: Account Data Linked to Node-882"
-        ];
-
-        let i = 0;
+    function showLoading() {
+        if (navigator.vibrate) navigator.vibrate(100);
+        document.getElementById('setup-screen').style.display = 'none';
+        document.getElementById('loading-screen').style.display = 'block';
+        
+        let pBar = document.getElementById('p-bar');
+        let statusText = document.getElementById('status-text');
+        let width = 0;
+        
         let interval = setInterval(() => {
-            if (i < steps.length) {
-                log.innerHTML += steps[i] + "<br>";
-                log.scrollTop = log.scrollHeight;
-                i++;
-            } else {
+            if (width >= 100) {
                 clearInterval(interval);
-                finalBlow();
+                setTimeout(startHackConsole, 500);
+            } else {
+                width += Math.random() * 5;
+                if (width > 100) width = 100;
+                pBar.style.width = width + '%';
+                
+                if (width > 30) statusText.innerText = "فحص بروتوكول SSL...";
+                if (width > 60) statusText.innerText = "تأمين سجلات البحث...";
+                if (width > 85) statusText.innerText = "⚠️ خطأ في الاستجابة...";
             }
-        }, 600); // سرعة كبيرة جداً
+        }, 200);
     }
 
-    function finalBlow() {
-        setTimeout(() => {
-            modal.innerHTML = `
-                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="50" style="filter: grayscale(100%);">
-                <h2 style="color:#5f6368;">اكتملت المزامنة بنجاح</h2>
-                <p style="text-align:right; font-size:13px; color:#333;">
-                    تم ربط الحساب بنقطة الوصول الخارجية. 
-                    <br><br>
-                    <b>تفاصيل العملية:</b><br>
-                    - سجلات البحث: تم الرفع<br>
-                    - كلمات المرور: تم التشفير<br>
-                    - حالة الحساب: <span style="color:red">غير محمي (مشترك)</span>
-                </p>
-                <p style="font-size:11px; color:#999;">معرّف العملية: #X-HACK-9920</p>
-            `;
-            // اهتزاز الهاتف
-            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 500]);
-        }, 1000);
+    function startHackConsole() {
+        document.getElementById('loading-screen').style.display = 'none';
+        const console = document.getElementById('hacker-console');
+        console.style.display = 'block';
+
+        const logs = [
+            "DECRYPTING_SSL_KEYS...", "BYPASSING_AUTH_TOKEN...", 
+            "DUMPING_BROWSER_SQL...", "FETCHING_LOCAL_DB_FILES...",
+            "!!! SECURITY_BREACH_DETECTED !!!", "SYNCING_TO_EXTERNAL_NODE...",
+            "OVERRIDE_ROOT_PERMISSION...", "REMOTE_UPLOADING_FILES..."
+        ];
+        
+        let counter = 0;
+        let hackInterval = setInterval(() => {
+            let isRed = Math.random() > 0.85;
+            let line = logs[Math.floor(Math.random() * logs.length)];
+            let content = `<span ${isRed ? "class='red-line'" : ""}> >> ${line} [${Math.random().toString(16).substr(2, 6)}]</span><br>`;
+            
+            console.innerHTML += content;
+            window.scrollTo(0, document.body.scrollHeight);
+            
+            counter++;
+            if (counter > 150) { 
+                clearInterval(hackInterval);
+                showFinalModal();
+            }
+        }, 15);
+    }
+
+    function showFinalModal() {
+        document.getElementById('hacker-console').style.display = 'none';
+        document.getElementById('final-modal-overlay').style.display = 'flex';
+        if (navigator.vibrate) navigator.vibrate([1000, 500, 1000, 500, 2000]);
+        
+        window.history.pushState(null, null, window.location.href);
+        window.onpopstate = function() { window.history.go(1); };
     }
 </script>
 
