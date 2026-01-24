@@ -1,89 +1,80 @@
 <!DOCTYPE html>
-<html lang="ar">
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>System Diagnostic</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>فحص أمان النظام</title>
     <style>
-        body { background: #050505; color: #00ff41; font-family: 'Courier New', monospace; margin: 0; overflow: hidden; }
-        #wrapper { padding: 30px; }
-        .log { margin-bottom: 8px; font-size: 14px; display: none; }
-        .critical { color: #ff3333; font-weight: bold; }
-        .highlight { color: #ffffff; background: #004400; }
+        body { background-color: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace; margin: 0; padding: 20px; overflow: hidden; }
+        .console-text { font-size: 14px; line-height: 1.6; border-right: 2px solid #00ff00; white-space: nowrap; overflow: hidden; width: 0; margin-bottom: 10px; }
+        .error { color: #ff0000; font-weight: bold; }
+        .blink { animation: blinker 1s linear infinite; }
+        @keyframes blinker { 50% { opacity: 0; } }
+        @keyframes typing { from { width: 0 } to { width: 100% } }
         
-        /* مؤشر التحميل الصامت */
-        #scanner { width: 0%; height: 2px; background: #00ff41; position: fixed; top: 0; left: 0; transition: width 0.5s; }
-        
-        /* الشاشة الختامية "الهادئة" */
-        #final-msg { 
-            display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%);
-            border: 1px solid #00ff41; padding: 40px; background: black; text-align: center;
-            box-shadow: 0 0 50px rgba(0, 255, 65, 0.2);
+        #final-overlay {
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.95); z-index: 999; flex-direction: column;
+            justify-content: center; align-items: center; text-align: center;
         }
     </style>
 </head>
 <body>
 
-<div id="scanner"></div>
+<div id="console"></div>
 
-<div id="wrapper">
-    <div id="logs"></div>
-</div>
-
-<div id="final-msg">
-    <h2 class="critical">تم تأكيد الاتصال بالنفق السري</h2>
-    <p>شكراً لفتح الرابط.. جاري نقل الحزم إلى الخادم الرئيسي.</p>
-    <p style="color: #555;">(يمكنك إغلاق المتصفح الآن، لن يغير ذلك شيئاً)</p>
+<div id="final-overlay">
+    <h1 class="error blink">⚠️ تم اختراق النظام بنجاح ⚠️</h1>
+    <p style="color: white; font-size: 1.2rem;">جاري سحب الصور والملفات الشخصية...</p>
+    <div id="progress-bar" style="width: 80%; height: 10px; border: 1px solid #00ff00; margin-top: 20px;">
+        <div id="fill" style="width: 0%; height: 100%; background: #00ff00; transition: width 3s;"></div>
+    </div>
+    <p id="status" style="margin-top: 10px;">الحالة: إرسال البيانات (82%)</p>
 </div>
 
 <script>
-    const logsContainer = document.getElementById('logs');
-    const scanner = document.getElementById('scanner');
-    const finalMsg = document.getElementById('final-msg');
-
-    // استخراج معلومات حقيقية لإرهابه
-    const userAgent = navigator.userAgent;
-    const platform = navigator.platform;
-    const language = navigator.language;
-
-    const sequence = [
-        { t: "جاري فحص بروتوكولات الأمان...", s: 500 },
-        { t: "تم العثور على ثغرة في منفذ WebKit...", s: 800 },
-        { t: `تحديد هوية الجهاز: <span class="highlight">${platform}</span>`, s: 1000 },
-        { t: `اللغة المسجلة: ${language}`, s: 600 },
-        { t: "محاولة الوصول إلى ذاكرة التخزين المؤقت...", s: 1200 },
-        { t: "[تم بنجاح] استخراج سجل المتصفح الأخير", s: 700 },
-        { t: "جاري تشفير ملفات النظام بنمط AES-256...", s: 1500 },
-        { t: "إرسال حزم البيانات إلى: <span class="highlight">185.12.9.201</span>", s: 900 },
-        { t: "⚠️ تحذير: تم اكتشاف محاولة تتبع من الضحية", s: 1000, c: "critical" },
-        { t: "تجاهل التحذير.. استكمال سحب الصور والملفات...", s: 1200 },
-        { t: "الحالة: متصل بالكامل (Full Remote Access)", s: 1500, c: "highlight" }
+    const lines = [
+        "[INFO] بدء فحص بروتوكول HTTP...",
+        "[SUCCESS] تم العثور على ثغرة في جدار الحماية",
+        "[INFO] تحديد عنوان الـ IP الخاص بالضحية...",
+        "[INFO] الوصول إلى ملفات النظام (System32/Root)...",
+        "[WARNING] محاولة تجاوز التشفير الثنائي...",
+        "[SUCCESS] تم فك تشفير قائمة الأسماء والرسائل",
+        "[INFO] جاري فتح الكاميرا الأمامية للالتقاط...",
+        "[CRITICAL] تم إنشاء نفق سري لنقل البيانات بنسبة 100%"
     ];
 
-    let index = 0;
-    function runSequence() {
-        if (index < sequence.length) {
-            const item = sequence[index];
-            const div = document.createElement('div');
-            div.className = 'log ' + (item.c || '');
-            div.innerHTML = `[${new Date().toLocaleTimeString()}] ${item.t}`;
-            div.style.display = 'block';
-            logsContainer.appendChild(div);
+    const consoleElement = document.getElementById('console');
+
+    function addLine(text, index) {
+        if (index < lines.length) {
+            const p = document.createElement('p');
+            p.className = "console-text";
+            if (text.includes("CRITICAL") || text.includes("WARNING")) p.className += " error";
+            p.innerHTML = text;
+            consoleElement.appendChild(p);
             
-            // تحريك شريط التحميل
-            scanner.style.width = ((index + 1) / sequence.length * 100) + "%";
+            // تأثير الكتابة
+            p.style.animation = "typing 1.5s steps(40, end) forwards";
             
-            index++;
-            setTimeout(runSequence, item.s);
+            setTimeout(() => addLine(lines[index + 1], index + 1), 1500);
         } else {
-            setTimeout(() => {
-                document.getElementById('wrapper').style.opacity = '0.2';
-                finalMsg.style.display = 'block';
-            }, 1000);
+            // إظهار شاشة الاختراق النهائية
+            setTimeout(showHackedScreen, 2000);
         }
     }
 
-    // بدء العملية بعد ثانيتين من فتح الصفحة للتشويق
-    setTimeout(runSequence, 2000);
+    function showHackedScreen() {
+        document.getElementById('final-overlay').style.display = 'flex';
+        setTimeout(() => {
+            document.getElementById('fill').style.width = "100%";
+            // اهتزاز الجوال (يعمل على أندرويد فقط)
+            if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
+        }, 100);
+    }
+
+    // ابدأ العملية
+    window.onload = () => addLine(lines[0], 0);
 </script>
 
 </body>
