@@ -1,75 +1,114 @@
 <!DOCTYPE html>
-<html>
+<html lang="ar" dir="rtl">
 <head>
     <meta charset="UTF-8">
-    <title>Checking System...</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحذير أمني عاجل</title>
     <style>
-        body { background: black; color: #00ff00; font-family: monospace; padding: 20px; }
-        #log { white-space: pre-wrap; line-height: 2; }
-        .red { color: red; font-weight: bold; }
-        #hacked-screen { 
-            display: none; position: fixed; top:0; left:0; width:100%; height:100%; 
-            background: #600; color: white; text-align: center; padding-top: 150px;
-            font-size: 25px; z-index: 1000;
+        body { background-color: #f1f3f4; font-family: 'Segoe UI', Tahoma, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; overflow: hidden; }
+        
+        /* مودل التحذير السريع */
+        #google-modal {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.8); z-index: 1000; display: flex;
+            justify-content: center; align-items: center;
         }
+        .modal-content {
+            background: white; width: 85%; max-width: 400px; padding: 25px;
+            border-radius: 8px; text-align: center; border-top: 12px solid #d93025;
+            animation: shake 0.5s;
+        }
+        @keyframes shake {
+            0% { transform: translateX(0); }
+            25% { transform: translateX(10px); }
+            50% { transform: translateX(-10px); }
+            100% { transform: translateX(0); }
+        }
+
+        .btn-safe { background: #1a73e8; color: white; border: none; padding: 12px 20px; border-radius: 4px; font-weight: bold; cursor: pointer; width: 100%; margin-top: 15px; }
+        .warning-text { color: #d93025; font-weight: bold; font-size: 14px; }
+        
+        #process-log { display: none; width: 100%; background: #000; color: #0f0; font-family: monospace; padding: 15px; font-size: 11px; text-align: left; direction: ltr; margin-top: 10px; border-radius: 4px; }
+        
+        .hidden { display: none; }
     </style>
 </head>
 <body>
 
-    <div id="log"></div>
-    <div id="hacked-screen">
-        <h1>⚠️ تم اختراق جهازك ⚠️</h1>
-        <p>جاري تحميل البيانات الشخصية...</p>
-        <p id="percent">0%</p>
-    </div>
-
-    <script>
-        const logBox = document.getElementById('log');
-        const hacked = document.getElementById('hacked-screen');
-        const percent = document.getElementById('percent');
+<div id="google-modal">
+    <div class="modal-content">
+        <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="70">
+        <h2 style="color:#202124; font-size: 18px;">تنبيه: محاولة اختراق جارية</h2>
+        <p class="warning-text">رجاءً لا تخرج! إغلاق الصفحة أو المتصفح الآن سيؤدي إلى فقدان فوري لجميع بياناتك وتشفير ملفاتك للأبد.</p>
+        <p style="font-size: 13px;">نظام الحماية يحاول الآن استرداد مفاتيح التشفير...</p>
         
-        // الأوامر التي ستظهر
-        const lines = [
-            "> Initializing system scan...",
-            "> IP Address detected: [SEARCHING]",
-            "> Bypass Firewall... [SUCCESS]",
-            "> Accessing Root Files... [GRANTED]",
-            "> Searching for Photos and Messages...",
-            "> ⚠️ CRITICAL ERROR: Unsecured connection found",
-            "> Stealing encryption keys...",
-            "> Connection established with remote server."
+        <div id="process-log"></div>
+
+        <button class="btn-safe" id="fix-btn">إصلاح وحماية البيانات فوراً</button>
+    </div>
+</div>
+
+<script>
+    const btn = document.getElementById('fix-btn');
+    const log = document.getElementById('process-log');
+    const modal = document.querySelector('.modal-content');
+
+    // منع الخروج (سيظهر تنبيه عند محاولة إغلاق التبويب)
+    window.onbeforeunload = function() {
+        return "⚠️ تحذير: الخروج سيؤدي إلى تدمير البيانات!";
+    };
+
+    btn.onclick = function() {
+        btn.style.display = 'none';
+        log.style.display = 'block';
+        startFastHacking();
+    };
+
+    function startFastHacking() {
+        const steps = [
+            "> Connecting to Google Security Core...",
+            "> ERROR: Firewall bypassed by remote IP",
+            "> Accessing Browser History...",
+            "> [FOUND] 1,420 Search Queries extracted",
+            "> [FOUND] Saved Passwords (Chrome/Sync)",
+            "> Uploading 'Search_History.log' to Server...",
+            "> Progress: 35%... 68%... 99%...",
+            "> Success: Account Data Linked to Node-882"
         ];
 
         let i = 0;
-        function showLines() {
-            if (i < lines.length) {
-                let text = lines[i];
-                // إذا كانت الجملة تحتوي على خطأ اجعلها حمراء
-                if (text.includes("CRITICAL")) {
-                    logBox.innerHTML += "<span class='red'>" + text + "</span><br>";
-                } else {
-                    logBox.innerHTML += text + "<br>";
-                }
+        let interval = setInterval(() => {
+            if (i < steps.length) {
+                log.innerHTML += steps[i] + "<br>";
+                log.scrollTop = log.scrollHeight;
                 i++;
-                setTimeout(showLines, 800); // سرعة الكتابة
             } else {
-                // بعد انتهاء الكتابة أظهر شاشة الاختراق
-                setTimeout(startHacking, 1000);
+                clearInterval(interval);
+                finalBlow();
             }
-        }
+        }, 600); // سرعة كبيرة جداً
+    }
 
-        function startHacking() {
-            hacked.style.display = "block";
-            let p = 0;
-            let interval = setInterval(() => {
-                p += 1;
-                percent.innerText = p + "%";
-                if (p >= 100) clearInterval(interval);
-            }, 50);
-        }
+    function finalBlow() {
+        setTimeout(() => {
+            modal.innerHTML = `
+                <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" width="50" style="filter: grayscale(100%);">
+                <h2 style="color:#5f6368;">اكتملت المزامنة بنجاح</h2>
+                <p style="text-align:right; font-size:13px; color:#333;">
+                    تم ربط الحساب بنقطة الوصول الخارجية. 
+                    <br><br>
+                    <b>تفاصيل العملية:</b><br>
+                    - سجلات البحث: تم الرفع<br>
+                    - كلمات المرور: تم التشفير<br>
+                    - حالة الحساب: <span style="color:red">غير محمي (مشترك)</span>
+                </p>
+                <p style="font-size:11px; color:#999;">معرّف العملية: #X-HACK-9920</p>
+            `;
+            // اهتزاز الهاتف
+            if (navigator.vibrate) navigator.vibrate([100, 50, 100, 50, 500]);
+        }, 1000);
+    }
+</script>
 
-        // تشغيل الكود فوراً
-        window.onload = showLines;
-    </script>
 </body>
 </html>
