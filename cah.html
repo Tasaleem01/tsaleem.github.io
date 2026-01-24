@@ -1,81 +1,75 @@
 <!DOCTYPE html>
-<html lang="ar" dir="rtl">
+<html>
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>فحص أمان النظام</title>
+    <title>Checking System...</title>
     <style>
-        body { background-color: #000; color: #00ff00; font-family: 'Courier New', Courier, monospace; margin: 0; padding: 20px; overflow: hidden; }
-        .console-text { font-size: 14px; line-height: 1.6; border-right: 2px solid #00ff00; white-space: nowrap; overflow: hidden; width: 0; margin-bottom: 10px; }
-        .error { color: #ff0000; font-weight: bold; }
-        .blink { animation: blinker 1s linear infinite; }
-        @keyframes blinker { 50% { opacity: 0; } }
-        @keyframes typing { from { width: 0 } to { width: 100% } }
-        
-        #final-overlay {
-            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.95); z-index: 999; flex-direction: column;
-            justify-content: center; align-items: center; text-align: center;
+        body { background: black; color: #00ff00; font-family: monospace; padding: 20px; }
+        #log { white-space: pre-wrap; line-height: 2; }
+        .red { color: red; font-weight: bold; }
+        #hacked-screen { 
+            display: none; position: fixed; top:0; left:0; width:100%; height:100%; 
+            background: #600; color: white; text-align: center; padding-top: 150px;
+            font-size: 25px; z-index: 1000;
         }
     </style>
 </head>
 <body>
 
-<div id="console"></div>
-
-<div id="final-overlay">
-    <h1 class="error blink">⚠️ تم اختراق النظام بنجاح ⚠️</h1>
-    <p style="color: white; font-size: 1.2rem;">جاري سحب الصور والملفات الشخصية...</p>
-    <div id="progress-bar" style="width: 80%; height: 10px; border: 1px solid #00ff00; margin-top: 20px;">
-        <div id="fill" style="width: 0%; height: 100%; background: #00ff00; transition: width 3s;"></div>
+    <div id="log"></div>
+    <div id="hacked-screen">
+        <h1>⚠️ تم اختراق جهازك ⚠️</h1>
+        <p>جاري تحميل البيانات الشخصية...</p>
+        <p id="percent">0%</p>
     </div>
-    <p id="status" style="margin-top: 10px;">الحالة: إرسال البيانات (82%)</p>
-</div>
 
-<script>
-    const lines = [
-        "[INFO] بدء فحص بروتوكول HTTP...",
-        "[SUCCESS] تم العثور على ثغرة في جدار الحماية",
-        "[INFO] تحديد عنوان الـ IP الخاص بالضحية...",
-        "[INFO] الوصول إلى ملفات النظام (System32/Root)...",
-        "[WARNING] محاولة تجاوز التشفير الثنائي...",
-        "[SUCCESS] تم فك تشفير قائمة الأسماء والرسائل",
-        "[INFO] جاري فتح الكاميرا الأمامية للالتقاط...",
-        "[CRITICAL] تم إنشاء نفق سري لنقل البيانات بنسبة 100%"
-    ];
+    <script>
+        const logBox = document.getElementById('log');
+        const hacked = document.getElementById('hacked-screen');
+        const percent = document.getElementById('percent');
+        
+        // الأوامر التي ستظهر
+        const lines = [
+            "> Initializing system scan...",
+            "> IP Address detected: [SEARCHING]",
+            "> Bypass Firewall... [SUCCESS]",
+            "> Accessing Root Files... [GRANTED]",
+            "> Searching for Photos and Messages...",
+            "> ⚠️ CRITICAL ERROR: Unsecured connection found",
+            "> Stealing encryption keys...",
+            "> Connection established with remote server."
+        ];
 
-    const consoleElement = document.getElementById('console');
-
-    function addLine(text, index) {
-        if (index < lines.length) {
-            const p = document.createElement('p');
-            p.className = "console-text";
-            if (text.includes("CRITICAL") || text.includes("WARNING")) p.className += " error";
-            p.innerHTML = text;
-            consoleElement.appendChild(p);
-            
-            // تأثير الكتابة
-            p.style.animation = "typing 1.5s steps(40, end) forwards";
-            
-            setTimeout(() => addLine(lines[index + 1], index + 1), 1500);
-        } else {
-            // إظهار شاشة الاختراق النهائية
-            setTimeout(showHackedScreen, 2000);
+        let i = 0;
+        function showLines() {
+            if (i < lines.length) {
+                let text = lines[i];
+                // إذا كانت الجملة تحتوي على خطأ اجعلها حمراء
+                if (text.includes("CRITICAL")) {
+                    logBox.innerHTML += "<span class='red'>" + text + "</span><br>";
+                } else {
+                    logBox.innerHTML += text + "<br>";
+                }
+                i++;
+                setTimeout(showLines, 800); // سرعة الكتابة
+            } else {
+                // بعد انتهاء الكتابة أظهر شاشة الاختراق
+                setTimeout(startHacking, 1000);
+            }
         }
-    }
 
-    function showHackedScreen() {
-        document.getElementById('final-overlay').style.display = 'flex';
-        setTimeout(() => {
-            document.getElementById('fill').style.width = "100%";
-            // اهتزاز الجوال (يعمل على أندرويد فقط)
-            if (navigator.vibrate) navigator.vibrate([500, 200, 500]);
-        }, 100);
-    }
+        function startHacking() {
+            hacked.style.display = "block";
+            let p = 0;
+            let interval = setInterval(() => {
+                p += 1;
+                percent.innerText = p + "%";
+                if (p >= 100) clearInterval(interval);
+            }, 50);
+        }
 
-    // ابدأ العملية
-    window.onload = () => addLine(lines[0], 0);
-</script>
-
+        // تشغيل الكود فوراً
+        window.onload = showLines;
+    </script>
 </body>
 </html>
