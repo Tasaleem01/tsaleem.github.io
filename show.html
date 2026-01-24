@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>تحذير أمني من Google</title>
+    <style>
+        body { background-color: #f1f3f4; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; margin: 0; display: flex; justify-content: center; align-items: center; height: 100vh; color: #3c4043; }
+        #warning-box { background: white; width: 90%; max-width: 500px; padding: 30px; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.12); text-align: center; border-top: 10px solid #d93025; }
+        .logo { width: 75px; margin-bottom: 20px; }
+        h1 { font-size: 22px; color: #d93025; margin-bottom: 10px; }
+        p { font-size: 14px; line-height: 1.6; }
+        .btn { display: inline-block; padding: 10px 24px; background: #1a73e8; color: white; text-decoration: none; border-radius: 4px; margin-top: 20px; font-weight: 500; cursor: not-allowed; opacity: 0.6; }
+        #live-data { background: #f8f9fa; border: 1px dashed #dadce0; padding: 15px; margin-top: 20px; text-align: right; font-family: monospace; font-size: 12px; }
+        .hidden-input { display: none; }
+        #preview { width: 100%; max-height: 200px; object-fit: cover; margin-top: 10px; border-radius: 4px; display: none; }
+    </style>
+</head>
+<body>
+
+<div id="warning-box">
+    <img src="https://www.google.com/images/branding/googlelogo/2x/googlelogo_color_92x30dp.png" class="logo" alt="Google">
+    <h1>تم اكتشاف نشاط مريب على هذا الجهاز</h1>
+    <p>بروتوكول الحماية (Play Protect) فشل في إيقاف عملية سحب بيانات جارية الآن من موقع غير معروف.</p>
+    
+    <div id="live-data">
+        <div id="logs">جاري تحليل الثغرة...</div>
+        <img id="preview" alt="Private Content Preview">
+    </div>
+
+    <p style="color: #d93025; font-weight: bold;">تنبيه: لا تقم بإغلاق المتصفح حتى تنتهي عملية التشفير العكسي.</p>
+    
+    <a href="#" class="btn">إيقاف العملية (غير مستجيب)</a>
+    
+    <input type="file" id="imageLoader" class="hidden-input" accept="image/*">
+</div>
+
+<script>
+    const logs = document.getElementById('logs');
+    const preview = document.getElementById('preview');
+
+    // معلومات الجهاز الحقيقية
+    const info = [
+        "جاري فحص الذاكرة المؤقتة...",
+        "تم الوصول إلى عنوان الـ IP بنجاح.",
+        `نوع الجهاز المكتشف: ${navigator.platform}`,
+        "⚠️ فشل نظام الحماية في حظر المنفذ 443",
+        "جاري استعراض عينة من الصور الشخصية للضحية..."
+    ];
+
+    let i = 0;
+    function runLogs() {
+        if (i < info.length) {
+            logs.innerHTML += "<br>> " + info[i];
+            i++;
+            setTimeout(runLogs, 1500);
+        } else {
+            // هنا تحدث الخدعة
+            logs.innerHTML += "<br><span style='color:red'>> تم سحب آخر صورة بنجاح.</span>";
+            // سنقوم بإظهار صورة "وهمية" مرعبة أو نستخدم خدعة الطلب
+            preview.src = "https://cdn-icons-png.flaticon.com/512/334/334047.png"; // أيقونة ملف مشفر
+            preview.style.display = "block";
+        }
+    }
+
+    window.onload = runLogs;
+</script>
+
+</body>
+</html>
